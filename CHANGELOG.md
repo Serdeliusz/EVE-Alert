@@ -11,6 +11,26 @@ Section Order:
 ### Removed
 -->
 
+### Fixed
+
+- **Threading:** The alert system runs in one worker thread with its own event loop per start. Stop/Start works repeatedly, and the GUI is no longer updated from background threads (random freezes and Tk errors)
+- **Silent failures:** An unexpected error now stops the system with a message instead of leaving it "running" without detection
+- **Webhook:** Errors in the "Alarm Reset" message no longer crash the alarm loop; requests no longer block the loop
+- **Detection:** Duplicate detections from 90%/100% template variants are merged; single-colour templates no longer match every flat area
+- **Settings:** Reading settings in the alert thread no longer rewrites `settings.json` or touches widgets; default settings are no longer mutated
+- **Audio test:** Test buttons no longer freeze the GUI and use the volume slider
+- Debug windows close reliably; the online status icon reference is correct
+- Outdated test for negative region coordinates (allowed since [#51](https://github.com/Geuthur/EVE-Alert/issues/51))
+
+### Changed
+
+- **Performance:** Regions are captured and checked once per alarm check (every 2-3 s) instead of 10 times per second; the 10 Hz loop only runs while a debug window is open
+- Screen capture reuses one `mss` instance; templates are prepared once
+- `cv.groupRectangles` (removed in OpenCV 5) replaced by non-maximum suppression with a candidate limit
+- A broken faction region only disables faction detection (with a message)
+- Main window log keeps the last 500 lines
+- Documentation in `docs/` translated from German to English
+
 ## [2.0.2] 2026-01-03
 
 ## Added

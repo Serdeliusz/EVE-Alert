@@ -1,374 +1,374 @@
-# EVE-Alert Verbesserungsplan
+# EVE-Alert Improvement Plan
 
-## Projektübersicht
+## Project Overview
 
-Systematische Verbesserung des EVE-Alert Systems für bessere Performance, Stabilität und Wartbarkeit.
-
-______________________________________________________________________
-
-## Phase 1: Grundlegende Stabilität & Abhängigkeiten ⚡
-
-### 1.1 Dependencies Synchronisation
-
-**Priorität:** HOCH | **Aufwand:** 1h | **Status:** ✅ Abgeschlossen
-
-- [x] `requirements.txt` und `pyproject.toml` synchronisieren
-  - mss: 10.0.0 (synchronisiert)
-  - opencv-python: 4.11.0.86 (synchronisiert)
-  - screeninfo: 0.8.1 (synchronisiert)
-  - CTkMessagebox zu pyproject.toml hinzugefügt
-- [x] Abhängigkeiten alphabetisch sortiert
-- [x] Beide Dateien verwenden jetzt identische Versionen
-
-**Erwartetes Ergebnis:** ✅ Konsistente Abhängigkeiten, keine Versionskonflikte
+Systematic improvement of the EVE-Alert system for better performance, stability and maintainability.
 
 ______________________________________________________________________
 
-### 1.2 Fehlerbehandlung & Validierung
+## Phase 1: Basic Stability & Dependencies ⚡
 
-**Priorität:** HOCH | **Aufwand:** 3h | **Status:** ✅ Abgeschlossen
+### 1.1 Dependency Synchronization
 
-- [x] Konfigurationsvalidierung beim Start implementiert
-  - Region-Koordinaten validieren (x1 < x2, y1 < y2)
-  - Detection Scale Bereich prüfen (0-100)
-  - Webhook URL Format validieren
-  - Audio-Dateien Existenz prüfen
-- [x] Eigene Exception-Klassen für unterschiedliche Fehlertypen erstellt
-  - EVEAlertException (Basis)
+**Priority:** HIGH | **Effort:** 1h | **Status:** ✅ Completed
+
+- [x] Synchronize `requirements.txt` and `pyproject.toml`
+  - mss: 10.0.0 (synchronized)
+  - opencv-python: 4.11.0.86 (synchronized)
+  - screeninfo: 0.8.1 (synchronized)
+  - CTkMessagebox added to pyproject.toml
+- [x] Dependencies sorted alphabetically
+- [x] Both files now use identical versions
+
+**Expected result:** ✅ Consistent dependencies, no version conflicts
+
+______________________________________________________________________
+
+### 1.2 Error Handling & Validation
+
+**Priority:** HIGH | **Effort:** 3h | **Status:** ✅ Completed
+
+- [x] Configuration validation implemented at startup
+  - Validate region coordinates (x1 < x2, y1 < y2)
+  - Check detection scale range (0-100)
+  - Validate webhook URL format
+  - Check that audio files exist
+- [x] Custom exception classes created for different error types
+  - EVEAlertException (base)
   - ConfigurationError, ValidationError
   - AudioError, WebhookError
-- [x] ConfigValidator-Klasse mit umfassenden Validierungsmethoden
-- [x] Unit Tests für Validierung erstellt (test_validator.py)
-- [x] Audio-Datei-Validierung beim AlertAgent-Start
+- [x] ConfigValidator class with comprehensive validation methods
+- [x] Unit tests for validation created (test_validator.py)
+- [x] Audio file validation when the AlertAgent starts
 
-**Erwartetes Ergebnis:** ✅ Robustere Anwendung, weniger Abstürze
-
-______________________________________________________________________
-
-## Phase 2: Performance-Optimierung 🚀
-
-### 2.1 Screenshot-Verarbeitung Optimierung
-
-**Priorität:** MITTEL | **Aufwand:** 2h | **Status:** ✅ Abgeschlossen
-
-- [x] Mehrfache Bildkonvertierungen reduziert
-  - `windowscapture.py`: Direkte NumPy-Array Rückgabe
-  - Unnötige PIL Image Konvertierung entfernt
-- [x] Alpha-Channel nur einmal entfernen
-- [x] Type Hints für WindowCapture hinzugefügt
-- [x] Verbesserte Fehlerbehandlung mit Logging
-
-**Erwartetes Ergebnis:** ✅ 15-20% schnellere Screenshot-Verarbeitung
+**Expected result:** ✅ More robust application, fewer crashes
 
 ______________________________________________________________________
 
-### 2.2 Vision Thread Optimierung
+## Phase 2: Performance Optimization 🚀
 
-**Priorität:** MITTEL | **Aufwand:** 2h | **Status:** ✅ Teilweise abgeschlossen
+### 2.1 Screenshot Processing Optimization
 
-- [x] Sleep-Zeiten als Konstanten definiert (VISION_SLEEP_INTERVAL)
-- [x] Template-Matching-Konstanten extrahiert
-- [ ] Unnötige Locks evaluieren und ggf. entfernen
-- [ ] Batch-Processing von mehreren Needle-Images evaluieren
+**Priority:** MEDIUM | **Effort:** 2h | **Status:** ✅ Completed
 
-**Erwartetes Ergebnis:** 🔄 Niedrigere CPU-Last, flüssigere UI (in Arbeit)
+- [x] Reduced repeated image conversions
+  - `windowscapture.py`: returns a NumPy array directly
+  - Removed unnecessary PIL Image conversion
+- [x] Remove the alpha channel only once
+- [x] Type hints added for WindowCapture
+- [x] Improved error handling with logging
+
+**Expected result:** ✅ 15-20% faster screenshot processing
 
 ______________________________________________________________________
 
-### 2.3 Magische Zahlen eliminieren
+### 2.2 Vision Thread Optimization
 
-**Priorität:** NIEDRIG | **Aufwand:** 1h | **Status:** ✅ Abgeschlossen
+**Priority:** MEDIUM | **Effort:** 2h | **Status:** ✅ Partially completed
 
-- [x] Konstanten-Datei erstellt (`evealert/constants.py`)
-  - Sleep-Zeiten (MAIN_CHECK_SLEEP_MIN/MAX, VISION_SLEEP_INTERVAL)
-  - Cooldown-Werte (DEFAULT_COOLDOWN_TIMER, WEBHOOK_COOLDOWN)
-  - Max Sound Triggers (MAX_SOUND_TRIGGERS)
-  - Detection Thresholds (DETECTION_THRESHOLD_MIN/MAX)
-  - UI Dimensionen (WINDOW_WIDTH/HEIGHT)
-  - OpenCV-Parameter (CV_RECTANGLE_THICKNESS, CV_LINE_TYPE, CV_DETECTION_COLOR)
-  - Audio-Konstanten (AUDIO_CHANNELS)
-  - Datei-Pfade und Präfixe
-- [x] Alle hardcodierten Werte durch Konstanten ersetzt in:
+- [x] Sleep times defined as constants (VISION_SLEEP_INTERVAL)
+- [x] Template matching constants extracted
+- [ ] Evaluate unnecessary locks and remove them if possible
+- [ ] Evaluate batch processing of multiple needle images
+
+**Expected result:** 🔄 Lower CPU load, smoother UI (in progress)
+
+______________________________________________________________________
+
+### 2.3 Eliminate Magic Numbers
+
+**Priority:** LOW | **Effort:** 1h | **Status:** ✅ Completed
+
+- [x] Constants file created (`evealert/constants.py`)
+  - Sleep times (MAIN_CHECK_SLEEP_MIN/MAX, VISION_SLEEP_INTERVAL)
+  - Cooldown values (DEFAULT_COOLDOWN_TIMER, WEBHOOK_COOLDOWN)
+  - Max sound triggers (MAX_SOUND_TRIGGERS)
+  - Detection thresholds (DETECTION_THRESHOLD_MIN/MAX)
+  - UI dimensions (WINDOW_WIDTH/HEIGHT)
+  - OpenCV parameters (CV_RECTANGLE_THICKNESS, CV_LINE_TYPE, CV_DETECTION_COLOR)
+  - Audio constants (AUDIO_CHANNELS)
+  - File paths and prefixes
+- [x] All hardcoded values replaced with constants in:
   - alertmanager.py
   - vision.py
   - main.py
 
-**Erwartetes Ergebnis:** ✅ Bessere Wartbarkeit, einfache Anpassung
+**Expected result:** ✅ Better maintainability, easy adjustment
 
 ______________________________________________________________________
 
-## Phase 3: Code-Qualität & Wartbarkeit 📝
+## Phase 3: Code Quality & Maintainability 📝
 
-### 3.1 Type Hints vervollständigen
+### 3.1 Complete Type Hints
 
-**Priorität:** MITTEL | **Aufwand:** 2h | **Status:** ✅ Abgeschlossen
+**Priority:** MEDIUM | **Effort:** 2h | **Status:** ✅ Completed
 
-- [x] Type Hints für AlertAgent Properties hinzugefügt
-- [x] Type Hints für zentrale Methoden (start, stop, load_settings)
-- [x] Type Hints für WindowCapture vollständig
-- [x] Type Hints für ConfigValidator vollständig
-- [x] Type Hints für MainMenu und alle GUI-Klassen
-- [x] Type Hints für ConfigModeMenu vollständig
-- [x] Type Hints für OverlaySystem mit Optional Types
-- [x] Type Hints für helper.py
-- [x] Return Types für 45+ Methoden hinzugefügt
-- [ ] mypy Integration für Type-Checking (optional)
+- [x] Type hints added for AlertAgent properties
+- [x] Type hints for core methods (start, stop, load_settings)
+- [x] Type hints for WindowCapture complete
+- [x] Type hints for ConfigValidator complete
+- [x] Type hints for MainMenu and all GUI classes
+- [x] Type hints for ConfigModeMenu complete
+- [x] Type hints for OverlaySystem with Optional types
+- [x] Type hints for helper.py
+- [x] Return types added for 45+ methods
+- [ ] mypy integration for type checking (optional)
 
-**Erwartetes Ergebnis:** ✅ Bessere IDE-Unterstützung, ~90% Type Coverage
-
-______________________________________________________________________
-
-### 3.2 Logging verbessern
-
-**Priorität:** NIEDRIG | **Aufwand:** 1h | **Status:** ✅ Abgeschlossen (Sprint 2)
-
-- [x] Strukturierte Log-Levels konsistent verwenden
-  - DEBUG für Vision-Details
-  - INFO für normale Events
-  - WARNING für recoverable Errors
-  - ERROR für kritische Fehler
-- [x] Log-Rotation implementiert (5MB, 3 Backups)
-- [ ] Performance-Metriken optional loggen
-
-**Erwartetes Ergebnis:** ✅ Besseres Debugging, Troubleshooting
+**Expected result:** ✅ Better IDE support, ~90% type coverage
 
 ______________________________________________________________________
 
-### 3.3 Dokumentation vervollständigen
+### 3.2 Improve Logging
 
-**Priorität:** HOCH | **Aufwand:** 2h | **Status:** ✅ Abgeschlossen
+**Priority:** LOW | **Effort:** 1h | **Status:** ✅ Completed (Sprint 2)
 
-- [x] Alle Kommentare auf Englisch umgestellt
-- [x] Comprehensive Docstrings für alle Klassen
-- [x] Method-Level Docstrings mit Args/Returns
-- [x] Beispiele in Docstrings wo hilfreich
-- [x] Google-Style Format durchgehend verwendet
-- [x] ~95% Docstring Coverage erreicht
+- [x] Use structured log levels consistently
+  - DEBUG for vision details
+  - INFO for normal events
+  - WARNING for recoverable errors
+  - ERROR for critical errors
+- [x] Log rotation implemented (5MB, 3 backups)
+- [ ] Optionally log performance metrics
 
-**Erwartetes Ergebnis:** ✅ Professionelle Dokumentation, einfaches Onboarding
-
-______________________________________________________________________
-
-## Phase 4: Neue Features & Verbesserungen ✨
-
-### 4.1 Runtime-Konfiguration
-
-**Priorität:** MITTEL | **Aufwand:** 3h | **Status:** ⏳ Ausstehend
-
-- [ ] Settings während Laufzeit anpassbar machen
-  - Detection Scale live ändern
-  - Cooldown-Timer anpassen
-  - Sound-Lautstärke regeln
-- [ ] "Apply Settings" ohne Neustart
-- [ ] Settings-Validierung in Echtzeit
-
-**Erwartetes Ergebnis:** Bessere Benutzererfahrung
+**Expected result:** ✅ Better debugging and troubleshooting
 
 ______________________________________________________________________
 
-### 4.2 Multi-Monitor Unterstützung
+### 3.3 Complete Documentation
 
-**Priorität:** NIEDRIG | **Aufwand:** 4h | **Status:** ⏳ Ausstehend
+**Priority:** HIGH | **Effort:** 2h | **Status:** ✅ Completed
 
-- [ ] Monitor-Auswahl in Settings
-- [ ] Koordinaten relativ zu gewähltem Monitor
-- [ ] Automatische Monitor-Erkennung
-- [ ] Multi-Monitor Overlay-System
+- [x] All comments switched to English
+- [x] Comprehensive docstrings for all classes
+- [x] Method-level docstrings with Args/Returns
+- [x] Examples in docstrings where helpful
+- [x] Google style format used throughout
+- [x] ~95% docstring coverage reached
 
-**Erwartetes Ergebnis:** Flexibilität für Multi-Monitor-Setups
-
-______________________________________________________________________
-
-### 4.3 Statistik & History
-
-**Priorität:** NIEDRIG | **Aufwand:** 3h | **Status:** ⏳ Ausstehend
-
-- [ ] Alarm-Counter (Total, Session)
-- [ ] Zeitstempel-Historie (letzte 10 Alarme)
-- [ ] Export zu CSV/JSON
-- [ ] Optionale Statistik-Anzeige im UI
-
-**Erwartetes Ergebnis:** Nutzungsanalyse, Pattern-Erkennung
+**Expected result:** ✅ Professional documentation, easy onboarding
 
 ______________________________________________________________________
 
-### 4.4 Erweiterte Audio-Optionen
+## Phase 4: New Features & Improvements ✨
 
-**Priorität:** NIEDRIG | **Aufwand:** 2h | **Status:** ⏳ Ausstehend
+### 4.1 Runtime Configuration
 
-- [ ] Lautstärke-Regler im UI
-- [ ] Eigene Sound-Dateien wählbar
-- [ ] Test-Button für Sounds
-- [ ] Fade-In/Fade-Out Effekte
+**Priority:** MEDIUM | **Effort:** 3h | **Status:** ⏳ Pending
 
-**Erwartetes Ergebnis:** Personalisierung
+- [ ] Make settings adjustable at runtime
+  - Change detection scale live
+  - Adjust cooldown timer
+  - Control sound volume
+- [ ] "Apply Settings" without restart
+- [ ] Real-time settings validation
+
+**Expected result:** Better user experience
+
+______________________________________________________________________
+
+### 4.2 Multi-Monitor Support
+
+**Priority:** LOW | **Effort:** 4h | **Status:** ⏳ Pending
+
+- [ ] Monitor selection in settings
+- [ ] Coordinates relative to the selected monitor
+- [ ] Automatic monitor detection
+- [ ] Multi-monitor overlay system
+
+**Expected result:** Flexibility for multi-monitor setups
+
+______________________________________________________________________
+
+### 4.3 Statistics & History
+
+**Priority:** LOW | **Effort:** 3h | **Status:** ⏳ Pending
+
+- [ ] Alarm counter (total, session)
+- [ ] Timestamp history (last 10 alarms)
+- [ ] Export to CSV/JSON
+- [ ] Optional statistics display in the UI
+
+**Expected result:** Usage analysis, pattern recognition
+
+______________________________________________________________________
+
+### 4.4 Extended Audio Options
+
+**Priority:** LOW | **Effort:** 2h | **Status:** ⏳ Pending
+
+- [ ] Volume slider in the UI
+- [ ] Selectable custom sound files
+- [ ] Test button for sounds
+- [ ] Fade-in/fade-out effects
+
+**Expected result:** Personalization
 
 ______________________________________________________________________
 
 ## Phase 5: Testing & CI/CD 🧪
 
-### 5.1 Unit Tests erstellen
+### 5.1 Create Unit Tests
 
-**Priorität:** MITTEL | **Aufwand:** 6h | **Status:** ⏳ Ausstehend
+**Priority:** MEDIUM | **Effort:** 6h | **Status:** ⏳ Pending
 
-- [ ] Test-Suite für Vision-Modul
-  - Template-Matching Tests
-  - Edge-Cases (keine Matches, zu viele Matches)
-- [ ] Test-Suite für AlertManager
-  - Alarm-Trigger-Logik
-  - Cooldown-Funktionalität
-- [ ] Test-Suite für Konfiguration
-  - Settings laden/speichern
-  - Validierung
-- [ ] Mock-Objekte für UI-Tests
-- [ ] Test-Coverage > 70%
+- [ ] Test suite for the vision module
+  - Template matching tests
+  - Edge cases (no matches, too many matches)
+- [ ] Test suite for the AlertManager
+  - Alarm trigger logic
+  - Cooldown functionality
+- [ ] Test suite for configuration
+  - Loading/saving settings
+  - Validation
+- [ ] Mock objects for UI tests
+- [ ] Test coverage > 70%
 
-**Erwartetes Ergebnis:** Stabilere Releases, Regression-Prevention
+**Expected result:** More stable releases, regression prevention
 
 ______________________________________________________________________
 
 ### 5.2 Integration Tests
 
-**Priorität:** NIEDRIG | **Aufwand:** 4h | **Status:** ⏳ Ausstehend
+**Priority:** LOW | **Effort:** 4h | **Status:** ⏳ Pending
 
-- [ ] End-to-End Test mit Mock-Screenshots
-- [ ] Webhook-Integration Tests
-- [ ] Audio-System Tests
-- [ ] Config-Persistenz Tests
+- [ ] End-to-end test with mock screenshots
+- [ ] Webhook integration tests
+- [ ] Audio system tests
+- [ ] Config persistence tests
 
-**Erwartetes Ergebnis:** Vollständige Test-Abdeckung
-
-______________________________________________________________________
-
-### 5.3 GitHub Actions verbessern
-
-**Priorität:** NIEDRIG | **Aufwand:** 2h | **Status:** ⏳ Ausstehend
-
-- [ ] Automatische Tests bei PR
-- [ ] Code-Coverage Reporting
-- [ ] Automatisches PyInstaller Build
-- [ ] Release-Automation
-
-**Erwartetes Ergebnis:** Automatisierte Qualitätssicherung
+**Expected result:** Full test coverage
 
 ______________________________________________________________________
 
-## Phase 6: Dokumentation 📚
+### 5.3 Improve GitHub Actions
 
-### 6.1 Code-Dokumentation
+**Priority:** LOW | **Effort:** 2h | **Status:** ⏳ Pending
 
-**Priorität:** MITTEL | **Aufwand:** 3h | **Status:** ⏳ Ausstehend
+- [ ] Automatic tests on PR
+- [ ] Code coverage reporting
+- [ ] Automatic PyInstaller build
+- [ ] Release automation
 
-- [ ] Docstrings für alle öffentlichen Funktionen/Klassen
-- [ ] Google/NumPy Style Docstrings
-- [ ] Sphinx-Dokumentation Setup (optional)
+**Expected result:** Automated quality assurance
+
+______________________________________________________________________
+
+## Phase 6: Documentation 📚
+
+### 6.1 Code Documentation
+
+**Priority:** MEDIUM | **Effort:** 3h | **Status:** ⏳ Pending
+
+- [ ] Docstrings for all public functions/classes
+- [ ] Google/NumPy style docstrings
+- [ ] Sphinx documentation setup (optional)
 - [ ] Architecture Decision Records (ADRs)
 
-**Erwartetes Ergebnis:** Bessere Onboarding für Contributors
+**Expected result:** Better onboarding for contributors
 
 ______________________________________________________________________
 
-### 6.2 Benutzer-Dokumentation
+### 6.2 User Documentation
 
-**Priorität:** NIEDRIG | **Aufwand:** 2h | **Status:** ⏳ Ausstehend
+**Priority:** LOW | **Effort:** 2h | **Status:** ⏳ Pending
 
-- [ ] Setup-Guide erweitern
-- [ ] Troubleshooting-Sektion
-- [ ] FAQ erstellen
-- [ ] Video-Tutorial (optional)
-- [ ] Screenshots aktualisieren
+- [ ] Extend the setup guide
+- [ ] Troubleshooting section
+- [ ] Create a FAQ
+- [ ] Video tutorial (optional)
+- [ ] Update screenshots
 
-**Erwartetes Ergebnis:** Reduzierte Support-Anfragen
-
-______________________________________________________________________
-
-## Priorisierte Roadmap
-
-### Sprint 1 (Woche 1-2): Stabilität ⚡
-
-1. Dependencies Synchronisation
-1. Fehlerbehandlung & Validierung
-1. Screenshot-Optimierung
-
-**Ziel:** Stabile Basis-Version
+**Expected result:** Fewer support requests
 
 ______________________________________________________________________
 
-### Sprint 2 (Woche 3-4): Performance 🚀
+## Prioritized Roadmap
 
-1. Vision Thread Optimierung
-1. Magische Zahlen eliminieren
-1. Type Hints vervollständigen
+### Sprint 1 (Weeks 1-2): Stability ⚡
 
-**Ziel:** Optimierte, wartbare Codebasis
+1. Dependency synchronization
+1. Error handling & validation
+1. Screenshot optimization
 
-______________________________________________________________________
-
-### Sprint 3 (Woche 5-6): Features ✨
-
-1. Runtime-Konfiguration
-1. Logging verbessern
-1. Statistik & History
-
-**Ziel:** Erweiterte Funktionalität
+**Goal:** Stable base version
 
 ______________________________________________________________________
 
-### Sprint 4 (Woche 7-8): Testing 🧪
+### Sprint 2 (Weeks 3-4): Performance 🚀
 
-1. Unit Tests erstellen
-1. Code-Dokumentation
-1. GitHub Actions verbessern
+1. Vision thread optimization
+1. Eliminate magic numbers
+1. Complete type hints
 
-**Ziel:** Professionelle Code-Qualität
+**Goal:** Optimized, maintainable code base
+
+______________________________________________________________________
+
+### Sprint 3 (Weeks 5-6): Features ✨
+
+1. Runtime configuration
+1. Improve logging
+1. Statistics & history
+
+**Goal:** Extended functionality
+
+______________________________________________________________________
+
+### Sprint 4 (Weeks 7-8): Testing 🧪
+
+1. Create unit tests
+1. Code documentation
+1. Improve GitHub Actions
+
+**Goal:** Professional code quality
 
 ______________________________________________________________________
 
 ### Backlog (Nice to Have) 💡
 
-- Multi-Monitor Unterstützung
-- Internationalisierung
-- Integration Tests
-- Erweiterte Audio-Optionen
-- Benutzer-Dokumentation
+- Multi-monitor support
+- Internationalization
+- Integration tests
+- Extended audio options
+- User documentation
 
 ______________________________________________________________________
 
-## Erfolgs-Metriken
+## Success Metrics
 
-- ✅ 0 bekannte kritische Bugs
-- ✅ Test-Coverage > 70%
-- ✅ CPU-Last < 5% im Idle
-- ✅ RAM-Nutzung < 150MB
-- ✅ Startup-Zeit < 3 Sekunden
-- ✅ 100% konsistente Dependencies
-- ✅ Type-Hint Coverage > 90%
-
-______________________________________________________________________
-
-## Notizen & Entscheidungen
-
-### Dependencies-Entscheidung
-
-- Verwende `pyproject.toml` als primäre Quelle
-- `requirements.txt` für Backward-Kompatibilität beibehalten
-- Automatische Sync mittels Script
-
-### Breaking Changes vermeiden
-
-- Alle Änderungen müssen abwärtskompatibel sein
-- Bestehende Config-Dateien müssen weiterfunktionieren
-- Migration-Guide bei größeren Änderungen
-
-### Code-Style
-
-- Black Formatter (bereits aktiv)
-- isort für Imports
-- pylint/flake8 für Linting
-- Pre-commit Hooks (bereits aktiv)
+- ✅ 0 known critical bugs
+- ✅ Test coverage > 70%
+- ✅ CPU load < 5% when idle
+- ✅ RAM usage < 150MB
+- ✅ Startup time < 3 seconds
+- ✅ 100% consistent dependencies
+- ✅ Type hint coverage > 90%
 
 ______________________________________________________________________
 
-**Letzte Aktualisierung:** 17. November 2025
-**Verantwortlich:** Development Team
-**Status:** 📋 In Planung
+## Notes & Decisions
+
+### Dependency Decision
+
+- Use `pyproject.toml` as the primary source
+- Keep `requirements.txt` for backward compatibility
+- Automatic sync via script
+
+### Avoid Breaking Changes
+
+- All changes must be backward compatible
+- Existing config files must keep working
+- Migration guide for larger changes
+
+### Code Style
+
+- Black formatter (already active)
+- isort for imports
+- pylint/flake8 for linting
+- Pre-commit hooks (already active)
+
+______________________________________________________________________
+
+**Last updated:** November 17, 2025
+**Responsible:** Development Team
+**Status:** 📋 Planning

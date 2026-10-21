@@ -1,176 +1,176 @@
-# Sprint 1 - Abgeschlossene Verbesserungen
+# Sprint 1 - Completed Improvements
 
-**Datum:** 17. November 2025\
-**Sprint:** 1 (Stabilität & Performance)\
-**Status:** ✅ Erfolgreich abgeschlossen
-
-______________________________________________________________________
-
-## 📋 Zusammenfassung
-
-Sprint 1 konzentrierte sich auf die Verbesserung der Stabilität, Performance und Code-Qualität von EVE-Alert. Alle geplanten Aufgaben wurden erfolgreich umgesetzt.
+**Date:** November 17, 2025\
+**Sprint:** 1 (Stability & Performance)\
+**Status:** ✅ Successfully completed
 
 ______________________________________________________________________
 
-## ✅ Abgeschlossene Aufgaben
+## 📋 Summary
 
-### 1. Dependencies Synchronisation ✅
+Sprint 1 focused on improving the stability, performance and code quality of EVE-Alert. All planned tasks were implemented successfully.
 
-**Problem:** Inkonsistente Versionen zwischen `requirements.txt` und `pyproject.toml`
+______________________________________________________________________
 
-**Lösung:**
+## ✅ Completed Tasks
 
-- ✅ Alle Package-Versionen synchronisiert:
+### 1. Dependency Synchronization ✅
+
+**Problem:** Inconsistent versions between `requirements.txt` and `pyproject.toml`
+
+**Solution:**
+
+- ✅ All package versions synchronized:
   - `mss`: 9.0.2 → 10.0.0
   - `opencv-python`: 4.10.0.84 → 4.11.0.86
   - `screeninfo`: 0.6.7 → 0.8.1
-- ✅ `CTkMessagebox==2.7` zu `pyproject.toml` hinzugefügt
-- ✅ `dhooks-lite` in beiden Dateien vorhanden
-- ✅ Alphabetische Sortierung für bessere Lesbarkeit
+- ✅ `CTkMessagebox==2.7` added to `pyproject.toml`
+- ✅ `dhooks-lite` present in both files
+- ✅ Alphabetical sorting for better readability
 
-**Dateien geändert:**
+**Files changed:**
 
 - `requirements.txt`
 - `pyproject.toml`
 
 ______________________________________________________________________
 
-### 2. Konstanten-System eingeführt ✅
+### 2. Constants System Introduced ✅
 
-**Problem:** Magische Zahlen im gesamten Code (Hardcoded Values)
+**Problem:** Magic numbers throughout the code (hardcoded values)
 
-**Lösung:**
+**Solution:**
 
-- ✅ Neue Datei `evealert/constants.py` erstellt mit:
-  - Vision & Detection Konstanten (VISION_SLEEP_INTERVAL, DETECTION_SCALE_MIN/MAX)
-  - Alarm & Cooldown Konstanten (MAX_SOUND_TRIGGERS, DEFAULT_COOLDOWN_TIMER, WEBHOOK_COOLDOWN)
-  - UI Konstanten (WINDOW_WIDTH, WINDOW_HEIGHT, UPDATE_INTERVALS)
-  - Audio Konstanten (AUDIO_CHANNELS)
-  - OpenCV Konstanten (CV_DETECTION_COLOR, CV_RECTANGLE_THICKNESS, etc.)
-  - Pfad-Konstanten (IMG_FOLDER, SOUND_FOLDER, Präfixe)
+- ✅ New file `evealert/constants.py` created with:
+  - Vision & detection constants (VISION_SLEEP_INTERVAL, DETECTION_SCALE_MIN/MAX)
+  - Alarm & cooldown constants (MAX_SOUND_TRIGGERS, DEFAULT_COOLDOWN_TIMER, WEBHOOK_COOLDOWN)
+  - UI constants (WINDOW_WIDTH, WINDOW_HEIGHT, UPDATE_INTERVALS)
+  - Audio constants (AUDIO_CHANNELS)
+  - OpenCV constants (CV_DETECTION_COLOR, CV_RECTANGLE_THICKNESS, etc.)
+  - Path constants (IMG_FOLDER, SOUND_FOLDER, prefixes)
 
-**Integration in:**
+**Integrated into:**
 
-- ✅ `evealert/manager/alertmanager.py` - alle hardcodierten Werte ersetzt
-- ✅ `evealert/tools/vision.py` - OpenCV-Parameter durch Konstanten
-- ✅ `evealert/menu/main.py` - UI-Dimensionen und Intervalle
+- ✅ `evealert/manager/alertmanager.py` - all hardcoded values replaced
+- ✅ `evealert/tools/vision.py` - OpenCV parameters replaced by constants
+- ✅ `evealert/menu/main.py` - UI dimensions and intervals
 
-**Vorteile:**
+**Benefits:**
 
-- 🎯 Zentrale Konfiguration aller Parameter
-- 📖 Bessere Lesbarkeit
-- 🔧 Einfache Anpassung ohne Code-Änderungen
+- 🎯 Central configuration of all parameters
+- 📖 Better readability
+- 🔧 Easy adjustment without code changes
 
 ______________________________________________________________________
 
-### 3. Konfigurationsvalidierung implementiert ✅
+### 3. Configuration Validation Implemented ✅
 
-**Problem:** Keine Validierung von Benutzer-Eingaben und Konfigurationen
+**Problem:** No validation of user input and configurations
 
-**Lösung:**
+**Solution:**
 
-- ✅ Neue Datei `evealert/settings/validator.py` mit `ConfigValidator`-Klasse
-- ✅ Validierungsmethoden für:
-  - **Region-Koordinaten** (x1 < x2, y1 < y2, Mindestgröße 10x10, keine negativen Werte)
-  - **Detection Scale** (0-100 Prozent)
-  - **Cooldown Timer** (0-3600 Sekunden)
-  - **Webhook URLs** (HTTP/HTTPS, Discord-Format)
-  - **Audio-Dateien** (Existenz, Format-Validierung)
-  - **Komplette Settings-Dictionary** Validierung
+- ✅ New file `evealert/settings/validator.py` with the `ConfigValidator` class
+- ✅ Validation methods for:
+  - **Region coordinates** (x1 < x2, y1 < y2, minimum size 10x10, no negative values)
+  - **Detection scale** (0-100 percent)
+  - **Cooldown timer** (0-3600 seconds)
+  - **Webhook URLs** (HTTP/HTTPS, Discord format)
+  - **Audio files** (existence, format validation)
+  - **Complete settings dictionary** validation
 
 **Integration:**
 
-- ✅ `AlertAgent.load_settings()` validiert jetzt Einstellungen beim Laden
-- ✅ `AlertAgent._validate_audio_files()` prüft Audio-Dateien beim Start
-- ✅ Benutzerfreundliche Fehlermeldungen in der UI
-- ✅ Detailliertes Logging bei Validierungsfehlern
+- ✅ `AlertAgent.load_settings()` now validates settings when loading
+- ✅ `AlertAgent._validate_audio_files()` checks audio files at startup
+- ✅ User-friendly error messages in the UI
+- ✅ Detailed logging on validation errors
 
-**Vorteile:**
+**Benefits:**
 
-- 🛡️ Verhindert fehlerhafte Konfigurationen
-- 📝 Hilfreiche Fehlermeldungen für Benutzer
-- 🔍 Früherkennung von Problemen
+- 🛡️ Prevents invalid configurations
+- 📝 Helpful error messages for users
+- 🔍 Early detection of problems
 
 ______________________________________________________________________
 
-### 4. Exception-Hierarchie verbessert ✅
+### 4. Exception Hierarchy Improved ✅
 
-**Problem:** Nur generische Exceptions ohne Hierarchie
+**Problem:** Only generic exceptions without a hierarchy
 
-**Lösung:**
+**Solution:**
 
-- ✅ Erweiterte `evealert/exceptions.py` mit:
-  - `EVEAlertException` (Basis-Klasse)
-  - `ScreenshotError` (Screenshot-Probleme)
-  - `RegionSizeError` (Ungültige Regionen)
-  - `WrongImageType` (Bild-Format-Fehler)
-  - `ConfigurationError` (Konfigurationsfehler) **NEU**
-  - `ValidationError` (Validierungsfehler) **NEU**
-  - `AudioError` (Audio-Probleme) **NEU**
-  - `WebhookError` (Webhook-Fehler) **NEU**
+- ✅ Extended `evealert/exceptions.py` with:
+  - `EVEAlertException` (base class)
+  - `ScreenshotError` (screenshot problems)
+  - `RegionSizeError` (invalid regions)
+  - `WrongImageType` (image format errors)
+  - `ConfigurationError` (configuration errors) **NEW**
+  - `ValidationError` (validation errors) **NEW**
+  - `AudioError` (audio problems) **NEW**
+  - `WebhookError` (webhook errors) **NEW**
 
 **Integration:**
 
-- ✅ `alertmanager.py` importiert `AudioError`, `ConfigurationError`
-- ✅ `validator.py` verwendet `ValidationError`
-- ✅ Basis für strukturierte Fehlerbehandlung geschaffen
+- ✅ `alertmanager.py` imports `AudioError`, `ConfigurationError`
+- ✅ `validator.py` uses `ValidationError`
+- ✅ Foundation for structured error handling created
 
-**Vorteile:**
+**Benefits:**
 
-- 🎯 Spezifische Exception-Typen für besseres Error-Handling
-- 🔍 Einfacheres Debugging
-- 📊 Möglichkeit für differenzierte Fehlerbehandlung
+- 🎯 Specific exception types for better error handling
+- 🔍 Easier debugging
+- 📊 Allows differentiated error handling
 
 ______________________________________________________________________
 
-### 5. Screenshot-Verarbeitung optimiert ✅
+### 5. Screenshot Processing Optimized ✅
 
-**Problem:** Mehrfache unnötige Bild-Konvertierungen
+**Problem:** Multiple unnecessary image conversions
 
-**Vorher:**
+**Before:**
 
 ```python
 img_array = np.array(screenshot)
 img_array = img_array[:, :, :3]
-img = Image.fromarray(img_array)  # ❌ Unnötig
-img_array = np.asarray(img)  # ❌ Unnötig
+img = Image.fromarray(img_array)  # ❌ Unnecessary
+img_array = np.asarray(img)  # ❌ Unnecessary
 ```
 
-**Nachher:**
+**After:**
 
 ```python
-img_array = np.array(screenshot)[:, :, :3]  # ✅ Direkt
+img_array = np.array(screenshot)[:, :, :3]  # ✅ Direct
 ```
 
-**Verbesserungen:**
+**Improvements:**
 
-- ✅ PIL Image Import entfernt
-- ✅ Direkte NumPy-Array Konvertierung
-- ✅ Type Hints hinzugefügt (`Tuple[Optional[np.ndarray], Optional[mss.screenshot.ScreenShot]]`)
-- ✅ Verbessertes Error-Logging
-- ✅ Docstring mit Parameter-Dokumentation
+- ✅ PIL Image import removed
+- ✅ Direct NumPy array conversion
+- ✅ Type hints added (`Tuple[Optional[np.ndarray], Optional[mss.screenshot.ScreenShot]]`)
+- ✅ Improved error logging
+- ✅ Docstring with parameter documentation
 
-**Performance-Gewinn:**
+**Performance gain:**
 
-- ⚡ Ca. 15-20% schnellere Screenshot-Verarbeitung
-- 💾 Geringerer Speicherverbrauch
-- 🔧 Saubererer, wartbarerer Code
+- ⚡ About 15-20% faster screenshot processing
+- 💾 Lower memory usage
+- 🔧 Cleaner, more maintainable code
 
-**Datei:** `evealert/tools/windowscapture.py`
+**File:** `evealert/tools/windowscapture.py`
 
 ______________________________________________________________________
 
-### 6. Type Hints erweitert ✅
+### 6. Type Hints Extended ✅
 
-**Problem:** Unvollständige oder fehlende Type Hints
+**Problem:** Incomplete or missing type hints
 
-**Lösung - Type Hints hinzugefügt zu:**
+**Solution - type hints added to:**
 
 **alertmanager.py:**
 
 - ✅ Properties: `is_running() -> bool`, `is_alarm() -> bool`, `is_enemy() -> bool`, `is_faction() -> bool`
-- ✅ Methoden: `clean_up() -> None`, `start() -> bool`, `stop() -> None`, `load_settings() -> None`
-- ✅ Vision-Methoden: `set_vision() -> None`, `set_vision_faction() -> None`
+- ✅ Methods: `clean_up() -> None`, `start() -> bool`, `stop() -> None`, `load_settings() -> None`
+- ✅ Vision methods: `set_vision() -> None`, `set_vision_faction() -> None`
 
 **windowscapture.py:**
 
@@ -178,128 +178,128 @@ ______________________________________________________________________
 
 **validator.py:**
 
-- ✅ Alle Validierungsmethoden mit vollständigen Type Hints
-- ✅ Return-Types als `Tuple[bool, Optional[str]]` oder `Tuple[bool, list]`
+- ✅ All validation methods with complete type hints
+- ✅ Return types as `Tuple[bool, Optional[str]]` or `Tuple[bool, list]`
 
-**Vorteile:**
+**Benefits:**
 
-- 🔍 Bessere IDE-Unterstützung (Autocomplete, Fehlerprüfung)
-- 📖 Self-documenting Code
-- 🛡️ Früherkennung von Type-Fehlern
-
-______________________________________________________________________
-
-### 7. Unit Tests erstellt ✅
-
-**Problem:** Nur Dummy-Test vorhanden
-
-**Lösung:**
-
-- ✅ Neue Datei `tests/test_validator.py` mit umfassenden Tests
-- ✅ 28 Test-Cases für `ConfigValidator`:
-  - Region-Koordinaten (valid, invalid x/y, negative, zu klein)
-  - Detection Scale (valid, boundary, zu niedrig/hoch)
-  - Cooldown Timer (valid, zero, negative, zu hoch)
-  - Webhook URLs (empty, http/https, Discord-Format, ungültig)
-  - Settings Dictionary (valid, ungültige Regionen/Scales)
-
-**Test-Kategorien:**
-
-- ✅ Positive Tests (gültige Eingaben)
-- ✅ Negative Tests (ungültige Eingaben)
-- ✅ Boundary Tests (Grenzwerte)
-- ✅ Edge Cases (leere Strings, etc.)
-
-**Vorteile:**
-
-- 🧪 Automatisierte Qualitätssicherung
-- 🛡️ Regression Prevention
-- 📊 Basis für Test-Coverage-Metriken
+- 🔍 Better IDE support (autocomplete, error checking)
+- 📖 Self-documenting code
+- 🛡️ Early detection of type errors
 
 ______________________________________________________________________
 
-## 📁 Geänderte/Neue Dateien
+### 7. Unit Tests Created ✅
 
-### Neue Dateien (4):
+**Problem:** Only a dummy test existed
 
-1. ✅ `evealert/constants.py` - Zentrale Konstantenverwaltung
-1. ✅ `evealert/settings/validator.py` - Konfigurationsvalidierung
-1. ✅ `tests/test_validator.py` - Unit Tests
-1. ✅ `IMPROVEMENT_PLAN.md` - Verbesserungsplan (aktualisiert)
+**Solution:**
 
-### Geänderte Dateien (7):
+- ✅ New file `tests/test_validator.py` with comprehensive tests
+- ✅ 28 test cases for `ConfigValidator`:
+  - Region coordinates (valid, invalid x/y, negative, too small)
+  - Detection scale (valid, boundary, too low/high)
+  - Cooldown timer (valid, zero, negative, too high)
+  - Webhook URLs (empty, http/https, Discord format, invalid)
+  - Settings dictionary (valid, invalid regions/scales)
 
-1. ✅ `requirements.txt` - Dependencies synchronisiert
-1. ✅ `pyproject.toml` - Dependencies synchronisiert
-1. ✅ `evealert/exceptions.py` - Exception-Hierarchie erweitert
-1. ✅ `evealert/manager/alertmanager.py` - Konstanten, Validierung, Type Hints
-1. ✅ `evealert/tools/vision.py` - Konstanten integriert
-1. ✅ `evealert/tools/windowscapture.py` - Optimiert, Type Hints
-1. ✅ `evealert/menu/main.py` - Konstanten integriert
+**Test categories:**
 
-______________________________________________________________________
+- ✅ Positive tests (valid input)
+- ✅ Negative tests (invalid input)
+- ✅ Boundary tests (limit values)
+- ✅ Edge cases (empty strings, etc.)
 
-## 📊 Metriken & Verbesserungen
+**Benefits:**
 
-| Bereich                    | Vorher          | Nachher           | Verbesserung         |
-| -------------------------- | --------------- | ----------------- | -------------------- |
-| **Dependencies**           | ❌ Inkonsistent | ✅ Synchronisiert | 100%                 |
-| **Konstanten**             | ❌ Hardcoded    | ✅ Zentralisiert  | ~40 Werte            |
-| **Validierung**            | ❌ Keine        | ✅ Umfassend      | 6 Validator-Methoden |
-| **Exceptions**             | 3 Klassen       | 8 Klassen         | +166%                |
-| **Screenshot-Performance** | Baseline        | ~15-20% schneller | +15-20%              |
-| **Type Hints**             | ~30%            | ~70%              | +40%                 |
-| **Unit Tests**             | 1 Dummy         | 28 echte Tests    | +2700%               |
+- 🧪 Automated quality assurance
+- 🛡️ Regression prevention
+- 📊 Basis for test coverage metrics
 
 ______________________________________________________________________
 
-## 🎯 Erfolgs-Metriken erreicht
+## 📁 Changed/New Files
 
-- ✅ 100% konsistente Dependencies
-- ✅ CPU-Last reduziert durch optimierte Screenshot-Verarbeitung
-- ✅ Type-Hint Coverage > 70%
-- ✅ Konfigurationsvalidierung bei 100% der kritischen Einstellungen
-- ✅ Test-Suite mit 28 automatisierten Tests
+### New files (4):
+
+1. ✅ `evealert/constants.py` - Central constants management
+1. ✅ `evealert/settings/validator.py` - Configuration validation
+1. ✅ `tests/test_validator.py` - Unit tests
+1. ✅ `IMPROVEMENT_PLAN.md` - Improvement plan (updated)
+
+### Changed files (7):
+
+1. ✅ `requirements.txt` - Dependencies synchronized
+1. ✅ `pyproject.toml` - Dependencies synchronized
+1. ✅ `evealert/exceptions.py` - Exception hierarchy extended
+1. ✅ `evealert/manager/alertmanager.py` - Constants, validation, type hints
+1. ✅ `evealert/tools/vision.py` - Constants integrated
+1. ✅ `evealert/tools/windowscapture.py` - Optimized, type hints
+1. ✅ `evealert/menu/main.py` - Constants integrated
 
 ______________________________________________________________________
 
-## 🔜 Nächste Schritte (Sprint 2)
+## 📊 Metrics & Improvements
 
-### Geplante Aufgaben:
+| Area                       | Before          | After             | Improvement            |
+| -------------------------- | --------------- | ----------------- | ---------------------- |
+| **Dependencies**           | ❌ Inconsistent | ✅ Synchronized   | 100%                   |
+| **Constants**              | ❌ Hardcoded    | ✅ Centralized    | ~40 values             |
+| **Validation**             | ❌ None         | ✅ Comprehensive  | 6 validator methods    |
+| **Exceptions**             | 3 classes       | 8 classes         | +166%                  |
+| **Screenshot performance** | Baseline        | ~15-20% faster    | +15-20%                |
+| **Type hints**             | ~30%            | ~70%              | +40%                   |
+| **Unit tests**             | 1 dummy         | 28 real tests     | +2700%                 |
 
-1. **Logging verbessern** - Strukturierte Log-Levels, Log-Rotation
-1. **Vision Thread Optimierung** - Locks evaluieren, Batch-Processing
-1. **Runtime-Konfiguration** - Settings ohne Neustart ändern
-1. **Internationalisierung** - Deutsche Kommentare auf Englisch
-1. **Erweiterte Tests** - Integration Tests, Coverage > 80%
+______________________________________________________________________
 
-### Optionale Erweiterungen:
+## 🎯 Success Metrics Reached
 
-- Multi-Monitor Unterstützung
-- Statistik & History-Feature
-- Erweiterte Audio-Optionen (Lautstärke-Regler)
+- ✅ 100% consistent dependencies
+- ✅ CPU load reduced by optimized screenshot processing
+- ✅ Type hint coverage > 70%
+- ✅ Configuration validation for 100% of critical settings
+- ✅ Test suite with 28 automated tests
+
+______________________________________________________________________
+
+## 🔜 Next Steps (Sprint 2)
+
+### Planned tasks:
+
+1. **Improve logging** - Structured log levels, log rotation
+1. **Vision thread optimization** - Evaluate locks, batch processing
+1. **Runtime configuration** - Change settings without restart
+1. **Internationalization** - German comments to English
+1. **Extended tests** - Integration tests, coverage > 80%
+
+### Optional extensions:
+
+- Multi-monitor support
+- Statistics & history feature
+- Extended audio options (volume slider)
 
 ______________________________________________________________________
 
 ## 💡 Lessons Learned
 
-### Was gut lief:
+### What went well:
 
-- ✅ Systematische Herangehensweise mit Verbesserungsplan
-- ✅ Parallele Bearbeitung von zusammenhängenden Aufgaben
-- ✅ Sofortige Test-Erstellung für neue Features
-- ✅ Konstanten-System vereinfacht zukünftige Anpassungen erheblich
+- ✅ Systematic approach with an improvement plan
+- ✅ Parallel work on related tasks
+- ✅ Tests written immediately for new features
+- ✅ The constants system greatly simplifies future adjustments
 
-### Verbesserungspotenzial:
+### Room for improvement:
 
-- 🔄 Mehr Integration Tests neben Unit Tests
-- 🔄 mypy für statische Type-Checking aktivieren
-- 🔄 Pre-commit Hooks für automatische Validierung
+- 🔄 More integration tests alongside unit tests
+- 🔄 Enable mypy for static type checking
+- 🔄 Pre-commit hooks for automatic validation
 
 ______________________________________________________________________
 
-## 🏆 Sprint 1 - Erfolgreicher Abschluss!
+## 🏆 Sprint 1 - Successfully Completed!
 
-Alle geplanten Aufgaben wurden erfolgreich implementiert und getestet. Die Code-Qualität, Stabilität und Performance von EVE-Alert wurden signifikant verbessert.
+All planned tasks were implemented and tested successfully. The code quality, stability and performance of EVE-Alert were significantly improved.
 
-**Team:** ✅ Bereit für Sprint 2!
+**Team:** ✅ Ready for Sprint 2!

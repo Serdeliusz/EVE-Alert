@@ -48,7 +48,7 @@ We use pre-commit hooks to ensure code quality and consistency. Please make sure
    pre-commit run eslint
    ```
 
-## Branching und Contributing via Pull Requests
+## Branching and Contributing via Pull Requests
 
 Before creating a pull request, make sure that you have forked the repository and are working on your fork. This ensures that your changes are isolated and do not affect the original repository until they are reviewed and merged.
 

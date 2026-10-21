@@ -7,38 +7,49 @@ EVE Alert is a Python desktop application that monitors EVE Online's local chat 
 
 ### Core Components
 1. **AlertAgent** (`evealert/manager/alertmanager.py`) - Central asyncio-based monitoring system
-   - Runs 3 concurrent coroutines: `vision_thread()`, `vision_faction_thread()`, `run()`
-   - Uses single `asyncio.Lock` for alarm processing (NOT for vision threads - they use atomic flag writes)
+   - `start()` launches one worker thread (`EVEAlertWorker`) with its own event loop
+   - The worker runs two coroutines: `run()` (capture + detect + alarms every 2-3s) and
+     `vision_debug_loop()` (refreshes the debug windows at 10 Hz only while they are open)
+   - `stop()` cancels the worker's main task thread-safely and returns immediately
    - Manages cooldowns, audio playback, webhook notifications, and statistics
 
 2. **Vision** (`evealert/tools/vision.py`) - OpenCV template matching engine
    - Supports multiple template images per detection type (e.g., `image_1_90%`, `image_1_100%`)
+   - Templates are loaded and converted to contiguous BGR uint8 once in `__init__`
    - Uses `cv.TM_CCOEFF_NORMED` for matching with configurable thresholds
-   - Normalizes images before matching: `cv.normalize(img, None, 0, 255, cv.NORM_MINMAX)`
-   - Debug mode shows live OpenCV windows with detection rectangles
+     (single-colour templates are compared by colour distance instead)
+   - `detect()` raises `ScreenshotError`/`RegionSizeError`; `find()`/`find_faction()` log errors and return `[]`
+   - Matches of all templates are grouped with non-maximum suppression (no `cv.groupRectangles`, which OpenCV 5 removed)
+   - Debug mode shows live OpenCV windows ("Enemy Vision", "Faction Vision") with detection rectangles
 
 3. **MainMenu** (`evealert/menu/main.py`) - CustomTkinter GUI
    - Manages overlay system for region selection (F1=alert, F2=faction, ESC=cancel)
-   - Runs alert system in background thread via `Thread(target=self.alert.start).start()`
+   - Starts/stops the alert system via `self.alert.start()` / `self.alert.stop()`
+   - `run_in_ui()` queues calls from other threads; `write_message()` and `open_error_window()` are thread-safe
+   - Keyboard hotkeys (pynput thread) are handled in the GUI thread
    - Updates status icons every 1000ms via `check_status()`
 
 4. **WindowCapture** (`evealert/tools/windowscapture.py`) - Screen capture using `mss`
    - Captures specific regions: `{"top": y1, "left": x1, "width": x2-x1, "height": y2-y1}`
-   - Drops alpha channel: `np.array(screenshot)[:, :, :3]`
+   - Keeps one `mss` instance per thread (mss must not be shared between threads on Windows)
+   - Returns a contiguous BGR array (alpha dropped)
 
 ### Data Flow
 ```
-Screenshot (mss) → Vision.find() → AlertAgent flags (enemy/faction)
+Screenshot (mss) → Vision.detect() → AlertAgent flags (enemy/faction)
   → alarm_detection() → play_sound() + webhook → statistics tracking
 ```
 
 ## Key Patterns & Conventions
 
-### Asyncio Usage
-- **Event loop management**: Single event loop created in `AlertAgent.__init__()` via `asyncio.get_event_loop()`
-- **Thread safety**: Main alarm loop protected by `async with self.lock:` in `run()`
-- **Vision threads**: Do NOT use locks - only write to boolean flags (`self.enemy`, `self.faction`)
-- **Sleep intervals**: Vision checks every 0.1s, main loop 2-3s random interval
+### Threading & Asyncio Usage
+- **Threads**: GUI thread (Tk), alert worker thread (asyncio loop), pynput keyboard listener thread
+- **Event loop management**: A new event loop (and `asyncio.Lock`) is created in the worker thread on every start
+- **GUI access**: Never touch Tk widgets outside the GUI thread - use `main.run_in_ui()` or `main.write_message()`
+- **OpenCV windows**: Created and closed only in the worker thread
+- **Settings in the worker**: Use `SettingMenu.read_settings()` (no file writes, no widget access), not `load_settings()`
+- **Errors**: An unexpected error stops the worker with a visible message; never swallow it silently
+- **Sleep intervals**: Main loop 2-3s random interval; debug windows refresh every 0.1s while open
 
 ### Settings System
 - Settings stored in `evealert/settings.json` with structure:
@@ -53,7 +64,7 @@ Screenshot (mss) → Vision.find() → AlertAgent flags (enemy/faction)
   }
   ```
 - **ALWAYS** validate settings with `ConfigValidator.validate_settings_dict()` before use
-- Reload settings when `self.main.menu.setting.is_changed` is True
+- The worker reloads settings when `self.main.menu.setting.is_changed` is True (it clears the flag first)
 
 ### Audio System
 - Convert mono to stereo: `np.stack([data, data], axis=-1)` if `data.ndim == 1`
@@ -87,7 +98,7 @@ python main.py
 
 ### Running Tests
 ```powershell
-# All tests (57 tests, ~2.5min runtime)
+# All tests
 pytest
 
 # With coverage report
@@ -126,7 +137,7 @@ Always mock `MainMenu` in tests:
 ```python
 self.mock_main = MagicMock()
 self.mock_main.write_message = MagicMock()
-self.mock_main.menu.setting.load_settings.return_value = test_settings
+self.mock_main.menu.setting.read_settings.return_value = test_settings
 ```
 
 ### Testing Async Code
@@ -163,19 +174,19 @@ Application REQUIRES 100% Windows display scaling for accurate template matching
 ### Region Validation
 - Regions must be at least 10x10 pixels
 - x1 < x2, y1 < y2
-- Coordinates cannot be negative
+- Coordinates can be negative (monitors left of / above the primary, see #51)
 - Detection region must be larger than template images
 
 ### Webhook Behavior
 - Discord webhooks have 5-second cooldown (`WEBHOOK_COOLDOWN`)
-- Automatically disabled on errors
+- Sent from an executor thread so a slow request never blocks the alarm loop; errors are logged
 - Only sent for "Enemy" alarms, not "Faction"
 - Sends "Alarm Reset" message when enemy clears
 
 ## Common Pitfalls
 
-1. **Don't add locks to vision threads** - Only `run()` uses the lock
-2. **Always normalize images before template matching** - Vision does this automatically
+1. **Don't touch Tk widgets from the worker thread** - Use `run_in_ui()`
+2. **Don't create `mss` or OpenCV windows in another thread** - They belong to the worker thread
 3. **Check settings validation before loading** - Use `ConfigValidator.validate_settings_dict()`
 4. **Handle audio channel conversion** - Mono must be converted to stereo
 5. **Use absolute paths** - `get_resource_path()` for bundled resources
