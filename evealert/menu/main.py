@@ -197,6 +197,9 @@ class MainMenu(customtkinter.CTk):
 
         # Menu System
         self.menu = MenuManager(self)
+        # Fill the settings window from settings.json (GUI thread)
+        self.menu.setting.load_settings()
+        self.menu.setting.changed = False
         # Overlay System
         self.overlay_system = OverlaySystem(self)
         # Alert System

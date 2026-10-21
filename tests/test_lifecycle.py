@@ -192,6 +192,11 @@ class WebhookTests(unittest.IsolatedAsyncioTestCase):
         self.main.webhook.execute.assert_called_once_with("Enemy Appears in Jita!")
         self.assertTrue(self.agent.webhook_sent)
 
+    async def test_webhook_without_system_name(self):
+        self.agent.system_name = ""
+        await self.agent.send_webhook_message("Enemy")
+        self.main.webhook.execute.assert_called_once_with("Enemy Appears!")
+
     async def test_webhook_error_is_handled(self):
         self.main.webhook.execute.side_effect = RuntimeError("discord down")
         await self.agent.send_webhook_message("Enemy")

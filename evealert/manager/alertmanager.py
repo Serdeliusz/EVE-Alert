@@ -544,7 +544,11 @@ class AlertAgent:
 
         if alarm_type == "Enemy" and self.webhook_sent:
             self.webhook_sent = False
-            await self._execute_webhook(f"Alarm Reset: {self.system_name}!")
+            if self.system_name:
+                message = f"Alarm Reset: {self.system_name}!"
+            else:
+                message = "Alarm Reset!"
+            await self._execute_webhook(message)
 
     async def alarm_detection(
         self, alarm_text: str, sound: str = ALARM_SOUND, alarm_type: str = "Enemy"
@@ -569,7 +573,11 @@ class AlertAgent:
 
         if self.main.webhook and alarm_type == "Enemy" and self.webhook_sent is False:
             self.webhook_cooldown_timer = current_time + WEBHOOK_COOLDOWN
-            if await self._execute_webhook(f"Enemy Appears in {self.system_name}!"):
+            if self.system_name:
+                message = f"Enemy Appears in {self.system_name}!"
+            else:
+                message = "Enemy Appears!"
+            if await self._execute_webhook(message):
                 self.webhook_sent = True
 
     async def play_sound(self, sound: str, alarm_type: str) -> None:

@@ -13,6 +13,12 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger("menu")
 
+# Hint texts shown in empty entry fields. They disappear when the field is
+# clicked and are never saved as values.
+WEBHOOK_PLACEHOLDER = "Enter a Webhook URL"
+SYSTEM_NAME_PLACEHOLDER = "Enter a System Name"
+PLACEHOLDER_VALUES = {WEBHOOK_PLACEHOLDER, SYSTEM_NAME_PLACEHOLDER}
+
 DEFAULT_SETTINGS = {
     "logging": "INFO",
     "alert_region_1": {"x": 0, "y": 0},
@@ -24,8 +30,8 @@ DEFAULT_SETTINGS = {
     "cooldown_timer": {"value": 30},
     "volume": {"value": 100},
     "server": {
-        "name": "Enter a Webhook URL",
-        "system": "Enter a System Name",
+        "name": "",
+        "system": "",
         "mute": False,
     },
 }
@@ -73,7 +79,7 @@ class SettingMenu:
                 settings = json.load(config_file)
             if not isinstance(settings, dict):
                 raise ValueError("settings.json must contain an object")
-            return self.merge_settings_with_defaults(settings)
+            return self._strip_placeholders(self.merge_settings_with_defaults(settings))
         except (OSError, ValueError) as e:
             # json.JSONDecodeError is a ValueError
             logger.debug(
@@ -81,6 +87,30 @@ class SettingMenu:
                 e,
             )
             return copy.deepcopy(self.default)
+
+    @staticmethod
+    def _strip_placeholders(settings):
+        """Replace hint texts saved by older versions with empty values."""
+        server = settings.get("server")
+        if isinstance(server, dict):
+            for key in ("name", "system"):
+                value = server.get(key)
+                if not isinstance(value, str) or value.strip() in PLACEHOLDER_VALUES:
+                    server[key] = ""
+                else:
+                    server[key] = value.strip()
+        return settings
+
+    @staticmethod
+    def _set_entry_text(entry, value) -> None:
+        """Replace the text of an entry; an empty value shows its hint text."""
+        entry.delete(0, customtkinter.END)
+        if value not in (None, ""):
+            entry.insert(0, value)
+        elif hasattr(entry, "_activate_placeholder"):
+            # A new CTkEntry counts as focused until it loses focus once, so
+            # delete() alone does not bring the hint text back.
+            entry._activate_placeholder()
 
     def load_settings(self):
         """Read the settings, write them back normalized and show them in the menu.
@@ -171,19 +201,15 @@ class SettingMenu:
             self.volume_scale.set(settings["volume"]["value"])
             self.volumeslider_event(settings["volume"]["value"])
 
-            self.system_name.delete(0, customtkinter.END)
-            self.system_name.insert(0, settings["server"]["system"])
+            self._set_entry_text(self.system_name, settings["server"]["system"])
 
-            self.webhook.delete(0, customtkinter.END)
+            webhook_url = settings["server"]["name"]
+            self._set_entry_text(self.webhook, webhook_url)
+            if webhook_url:
+                self._activate_webhook(webhook_url)
+            else:
+                self.main.webhook = None
 
-            # Check if the webhook URL is valid
-            if (
-                settings["server"]["name"] != "Enter a Webhook URL"
-                and settings["server"]["name"] != ""
-            ):
-                self._activate_webhook(settings["server"]["name"])
-
-            self.webhook.insert(0, settings["server"]["name"])
             self.play_alarm.set(settings["server"]["mute"])
 
         except KeyError as e:
@@ -233,8 +259,8 @@ class SettingMenu:
                     "cooldown_timer": {"value": int(self.cooldown_timer.get())},
                     "volume": {"value": int(self.volume_scale.get())},
                     "server": {
-                        "name": self.webhook.get(),
-                        "system": self.system_name.get(),
+                        "name": self.webhook.get().strip(),
+                        "system": self.system_name.get().strip(),
                         "mute": self.play_alarm.get(),
                     },
                 }
@@ -286,8 +312,8 @@ class SettingMenu:
                 self.main.alert.mute = mute
 
                 # Update webhook if changed
-                webhook_url = self.webhook.get()
-                if webhook_url and webhook_url != "Enter a Webhook URL":
+                webhook_url = self.webhook.get().strip()
+                if webhook_url:
                     self._activate_webhook(webhook_url)
                 else:
                     self.main.webhook = None
@@ -332,8 +358,8 @@ class SettingMenu:
         self.logging = customtkinter.CTkEntry(self.menu_frame)
 
         # 1 Row - Init
-        self.label_x_axis = customtkinter.CTkLabel(self.menu_frame, text="X-Achse")
-        self.label_y_axis = customtkinter.CTkLabel(self.menu_frame, text="Y-Achse")
+        self.label_x_axis = customtkinter.CTkLabel(self.menu_frame, text="X-Axis")
+        self.label_y_axis = customtkinter.CTkLabel(self.menu_frame, text="Y-Axis")
 
         # 2 Row - Init
         # Alert Region Position 1
@@ -450,11 +476,15 @@ class SettingMenu:
         self.webhook_label = customtkinter.CTkLabel(
             self.menu_frame, text="Webhook:", justify="left"
         )
-        self.webhook = customtkinter.CTkEntry(self.menu_frame)
+        self.webhook = customtkinter.CTkEntry(
+            self.menu_frame, placeholder_text=WEBHOOK_PLACEHOLDER
+        )
         self.system_name_label = customtkinter.CTkLabel(
             self.menu_frame, text="System Name:", justify="left"
         )
-        self.system_name = customtkinter.CTkEntry(self.menu_frame)
+        self.system_name = customtkinter.CTkEntry(
+            self.menu_frame, placeholder_text=SYSTEM_NAME_PLACEHOLDER
+        )
 
         self.play_alarm_checkbox = customtkinter.CTkCheckBox(
             self.menu_frame, text="Mute Alarm", variable=self.play_alarm
