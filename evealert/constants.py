@@ -1,7 +1,8 @@
 """Constants for EVE Alert application."""
 
 # Vision & Detection
-VISION_SLEEP_INTERVAL = 0.1  # Sleep between vision checks (seconds)
+VISION_SLEEP_INTERVAL = 0.1  # Refresh interval of the debug vision windows (seconds)
+VISION_IDLE_INTERVAL = 0.25  # Poll interval while no debug window is open (seconds)
 MAIN_CHECK_SLEEP_MIN = 2.0  # Minimum sleep between main checks (seconds)
 MAIN_CHECK_SLEEP_MAX = 3.0  # Maximum sleep between main checks (seconds)
 DETECTION_SCALE_MIN = 0  # Minimum detection scale percentage
@@ -13,12 +14,16 @@ DETECTION_THRESHOLD_MAX = 1.0  # Maximum threshold for template matching
 MAX_SOUND_TRIGGERS = 3  # Maximum sound triggers before cooldown
 DEFAULT_COOLDOWN_TIMER = 60  # Default cooldown time in seconds
 WEBHOOK_COOLDOWN = 5  # Webhook cooldown time in seconds
+WEBHOOK_TIMEOUT = 10  # Max time to wait for a webhook request (seconds)
 
 # UI
 WINDOW_WIDTH = 500
 WINDOW_HEIGHT = 350
 UI_UPDATE_INTERVAL = 100  # Mouse position update interval (ms)
 STATUS_CHECK_INTERVAL = 1000  # Status check interval (ms)
+LOG_FIELD_MAX_LINES = 500  # Lines kept in the main window log field
+UI_QUEUE_INTERVAL = 50  # Interval for processing calls from worker threads (ms)
+ALERT_STOP_TIMEOUT = 3.0  # Max time to wait for the alert thread on exit (seconds)
 
 # Audio
 AUDIO_CHANNELS = 2  # Stereo output
@@ -46,5 +51,5 @@ CV_LINE_TYPE = 4  # cv.LINE_4
 CV_DETECTION_COLOR = (0, 255, 0)  # Green for detection boxes
 
 # Template Matching
-GROUP_RECTANGLES_THRESHOLD = 1
-GROUP_RECTANGLES_EPS = 0.5
+DETECTION_MAX_CANDIDATES = 500  # Max match candidates per template before grouping
+DETECTION_NMS_OVERLAP = 0.3  # Max overlap (IoU) between two separate detections

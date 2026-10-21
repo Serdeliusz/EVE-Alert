@@ -166,7 +166,7 @@ class TestVision(unittest.TestCase):
 
         with patch("cv2.destroyWindow") as mock_destroy:
             self.vision.destroy_vision("Enemy")
-            mock_destroy.assert_called_once_with("Enemy")
+            mock_destroy.assert_called_once_with("Enemy Vision")
 
         self.assertFalse(self.vision.debug_mode)
 
@@ -176,7 +176,7 @@ class TestVision(unittest.TestCase):
 
         with patch("cv2.destroyWindow") as mock_destroy:
             self.vision.destroy_vision("Faction")
-            mock_destroy.assert_called_once_with("Faction")
+            mock_destroy.assert_called_once_with("Faction Vision")
 
         self.assertFalse(self.vision.debug_mode_faction)
 

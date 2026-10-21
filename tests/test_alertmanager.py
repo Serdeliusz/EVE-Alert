@@ -43,14 +43,11 @@ class TestAlertAgent(unittest.TestCase):
         with open(self.settings_path, "w") as f:
             json.dump(self.test_settings, f)
 
-        self.mock_main.menu.setting.load_settings.return_value = self.test_settings
+        self.mock_main.menu.setting.read_settings.return_value = self.test_settings
         self.mock_main.menu.setting.is_changed = False
 
-        # Patch audio file validation and event loop
-        with patch(
-            "evealert.manager.alertmanager.AlertAgent._validate_audio_files"
-        ), patch("asyncio.get_event_loop") as mock_loop:
-            mock_loop.return_value = MagicMock()
+        # Patch audio file validation
+        with patch("evealert.manager.alertmanager.AlertAgent._validate_audio_files"):
             self.agent = AlertAgent(self.mock_main)
 
     def tearDown(self):
@@ -79,7 +76,7 @@ class TestAlertAgent(unittest.TestCase):
         """Test loading custom volume setting."""
         # Update settings with 50% volume
         self.test_settings["volume"]["value"] = 50
-        self.mock_main.menu.setting.load_settings.return_value = self.test_settings
+        self.mock_main.menu.setting.read_settings.return_value = self.test_settings
 
         self.agent.load_settings()
         self.assertEqual(self.agent.volume, 0.5)

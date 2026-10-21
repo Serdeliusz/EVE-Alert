@@ -1,6 +1,8 @@
 import os
+import queue
+import threading
 from datetime import datetime
-from threading import Thread
+from typing import Callable
 
 import customtkinter
 import pyautogui
@@ -11,7 +13,9 @@ from screeninfo import get_monitors
 
 from evealert import __version__
 from evealert.constants import (
+    LOG_FIELD_MAX_LINES,
     STATUS_CHECK_INTERVAL,
+    UI_QUEUE_INTERVAL,
     UI_UPDATE_INTERVAL,
     WINDOW_HEIGHT,
     WINDOW_WIDTH,
@@ -162,6 +166,12 @@ class MainMenu(customtkinter.CTk):
     - Status updates and logging
     - Keyboard hotkeys (F1/F2 for region selection)
 
+    Threading:
+        Tk widgets may only be used from the thread that created them (the
+        GUI thread). Other threads (alert worker, keyboard listener) must use
+        ``run_in_ui`` or the thread-safe ``write_message`` and
+        ``open_error_window``.
+
     Attributes:
         mainmenu_buttons: Button management component
         menu: Menu system manager (config and settings)
@@ -174,6 +184,12 @@ class MainMenu(customtkinter.CTk):
     def __init__(self) -> None:
         """Initialize the main menu window and all subsystems."""
         super().__init__()
+        # Calls from other threads are queued and run in the GUI thread
+        self._ui_thread_id = threading.get_ident()
+        self._ui_queue: "queue.SimpleQueue" = queue.SimpleQueue()
+        self._closing = False
+        self.keyboard_listener = None
+
         self.title(f"Alert - {__version__}")
         self.mainmenu_buttons = MainMenuButtons(self)
         self.init_widgets()
@@ -190,12 +206,48 @@ class MainMenu(customtkinter.CTk):
         # Status System
         self.current_status = False
         self.check_status()
+        self._process_ui_queue()
+
+    # Thread helpers
+    def is_ui_thread(self) -> bool:
+        """Returns True if called from the GUI thread."""
+        return threading.get_ident() == self._ui_thread_id
+
+    def run_in_ui(self, func: Callable, *args, **kwargs) -> None:
+        """Run ``func`` in the GUI thread.
+
+        Runs immediately when called from the GUI thread, otherwise the call
+        is queued and executed shortly after. Safe to call from any thread.
+        """
+        if self.is_ui_thread():
+            func(*args, **kwargs)
+        else:
+            self._ui_queue.put((func, args, kwargs))
+
+    def _process_ui_queue(self) -> None:
+        """Run calls queued by other threads (GUI thread only)."""
+        while True:
+            try:
+                func, args, kwargs = self._ui_queue.get_nowait()
+            except queue.Empty:
+                break
+            try:
+                func(*args, **kwargs)
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                log_main.exception("Error in queued GUI call: %s", e)
+        if not self._closing:
+            self.after(UI_QUEUE_INTERVAL, self._process_ui_queue)
 
     def clean_up(self) -> None:
         """Cleanup the main system."""
+        if self._closing:
+            return
+        self._closing = True
+        if self.keyboard_listener is not None:
+            self.keyboard_listener.stop()
+        self.alert.clean_up()
         self.overlay_system.clean_up()
         self.menu.config.clean_up()
-        self.alert.clean_up()
         self.destroy()
 
     def init_widgets(self) -> None:
@@ -208,6 +260,7 @@ class MainMenu(customtkinter.CTk):
         self.log_field.tag_config("normal", foreground="white")
         self.log_field.tag_config("green", foreground="lightgreen")
         self.log_field.tag_config("red", foreground="orange")
+        self.log_field.tag_config("yellow", foreground="yellow")
 
         # Create mouse position label
         self.mouse_position_label = customtkinter.CTkLabel(
@@ -286,8 +339,12 @@ class MainMenu(customtkinter.CTk):
         self.stop_button.grid(row=0, column=1, padx=(0, 10))
         self.exit_button.grid(row=0, column=2)
 
-        keyboard_listener = keyboard.Listener(on_release=self.on_key_release)
-        keyboard_listener.start()
+        # The listener runs in its own thread; events are handled in the GUI thread
+        self.keyboard_listener = keyboard.Listener(
+            on_release=lambda key: self.run_in_ui(self.on_key_release, key)
+        )
+        self.keyboard_listener.daemon = True
+        self.keyboard_listener.start()
 
         self.update_mouse_position_label()
 
@@ -309,31 +366,41 @@ class MainMenu(customtkinter.CTk):
             log_main.exception("Error setting icon: %s", e)
 
     def open_error_window(self, message: str) -> None:
-        """Open an error dialog window.
+        """Open an error dialog window. Safe to call from any thread.
 
         Args:
             message: Error message to display
         """
-        messagebox(title="Error", message=message, icon="cancel")
+        self.run_in_ui(messagebox, title="Error", message=message, icon="cancel")
 
     def write_message(self, text: str, color: str = "normal") -> None:
-        """Write a timestamped message to the log field.
+        """Write a timestamped message to the log field. Safe to call from any thread.
 
         Args:
             text: Message text to display
-            color: Text color (normal, green, red)
+            color: Text color (normal, green, yellow, red)
         """
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        self.run_in_ui(self._insert_message, f"[{now}] {text}\n", color)
+
+    def _insert_message(self, line: str, color: str) -> None:
+        """Insert a line at the top of the log field (GUI thread only)."""
+        if self._closing:
+            return
         try:
-            self.log_field.insert("1.0", f"[{now}] {text}\n", color)
-        except Exception as e:
+            self.log_field.insert("1.0", line, color)
+            # Keep the log field small; it grows by one line every few seconds
+            last_line = int(self.log_field.index("end-1c").split(".")[0])
+            if last_line > LOG_FIELD_MAX_LINES:
+                self.log_field.delete(f"{LOG_FIELD_MAX_LINES + 1}.0", "end")
+        except Exception as e:  # pylint: disable=broad-exception-caught
             log_main.error("Write Message Error: %s", e, exc_info=True)
 
     # Mouse Functions
     def update_mouse_position_label(self) -> None:
         """Update the mouse position label with current coordinates."""
         x, y = pyautogui.position()
-        self.mouse_position_label.configure(text=f"Mausposition: X={x}, Y={y}")
+        self.mouse_position_label.configure(text=f"Mouse position: X={x}, Y={y}")
         self.after(UI_UPDATE_INTERVAL, self.update_mouse_position_label)
 
     def start_overlay(self) -> None:
@@ -366,7 +433,7 @@ class MainMenu(customtkinter.CTk):
         if self.alert.is_running != self.current_status:
             if self.alert.is_running:
                 self.mainmenu_buttons.show_status_label.configure(image=self.online)
-                self.mainmenu_buttons.show_status_label.image = self.offline
+                self.mainmenu_buttons.show_status_label.image = self.online
             else:
                 self.mainmenu_buttons.show_status_label.configure(image=self.offline)
                 self.mainmenu_buttons.show_status_label.image = self.offline
@@ -414,7 +481,7 @@ class MainMenu(customtkinter.CTk):
     # pylint: disable=too-many-nested-blocks
     # Keyboard Functions
     def on_key_release(self, key) -> None:
-        """Handle keyboard hotkey events for region selection.
+        """Handle keyboard hotkey events for region selection (GUI thread).
 
         Args:
             key: The keyboard key that was released
@@ -433,8 +500,8 @@ class MainMenu(customtkinter.CTk):
                     self.menu.config.faction_region = False
                     self.menu.config.alert_region = True
                     self.write_message("Settings: Enemy Active.")
-                    self.after(0, self.start_overlay)
-            if key == keyboard.Key.f2:
+                    self.start_overlay()
+            elif key == keyboard.Key.f2:
                 if (
                     not self.menu.config.is_faction_region
                     and not self.menu.config.is_alert_region
@@ -442,7 +509,7 @@ class MainMenu(customtkinter.CTk):
                     self.menu.config.alert_region = False
                     self.menu.config.faction_region = True
                     self.write_message("Settings: Faction Active.")
-                    self.after(0, self.start_overlay)
+                    self.start_overlay()
             elif key == keyboard.Key.esc:
                 if self.overlay_system.overlay:
                     self.overlay_system.clean_up()
@@ -451,25 +518,23 @@ class MainMenu(customtkinter.CTk):
     def start_alert_script(self) -> None:
         """Start the alert monitoring system in a background thread.
 
-        Creates a new thread to run the alert system without blocking
-        the GUI. Handles errors gracefully with user feedback.
+        The alert agent creates its own worker thread, so the GUI is
+        never blocked. Handles errors gracefully with user feedback.
         """
         try:
-            if not self.alert.is_running:
-                Thread(target=self.alert.start).start()
-            else:
-                self.write_message("System: EVE Alert is already running.")
-        except Exception as e:
+            self.alert.start()
+        except Exception as e:  # pylint: disable=broad-exception-caught
             log_alert.error("Start Alert Error: %s", e, exc_info=True)
             self.write_message("System: Something went wrong.", "red")
 
     def stop_alert_script(self) -> None:
         """Stop the alert monitoring system.
 
-        Gracefully shuts down all alert threads and resets the system state.
+        The worker thread finishes in the background and reports
+        "EVE Alert stopped." when it is done.
         """
-        if self.alert.is_running:
+        if self.alert.is_alive:
             self.alert.stop()
-            self.write_message("System: EVE Alert stopped.", "red")
+            self.write_message("System: Stopping EVE Alert...")
             return
         self.write_message("System: EVE Alert isn't running.")

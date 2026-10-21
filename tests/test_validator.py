@@ -35,12 +35,15 @@ class TestConfigValidator(unittest.TestCase):
         self.assertIn("y2", error.lower())
 
     def test_validate_region_coordinates_negative(self):
-        """Test negative coordinates."""
+        """Negative coordinates are valid (monitors left of / above the primary).
+
+        See https://github.com/Geuthur/EVE-Alert/issues/51
+        """
         is_valid, error = ConfigValidator.validate_region_coordinates(
             -10, 100, 300, 300
         )
-        self.assertFalse(is_valid)
-        self.assertIsNotNone(error)
+        self.assertTrue(is_valid)
+        self.assertIsNone(error)
 
     def test_validate_region_coordinates_too_small(self):
         """Test region too small."""

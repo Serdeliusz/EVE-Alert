@@ -1,3 +1,4 @@
+import copy
 import json
 from typing import TYPE_CHECKING
 
@@ -57,17 +58,36 @@ class SettingMenu:
         """Returns True if the settings window is open."""
         return self.open
 
-    def load_settings(self):
+    def read_settings(self):
+        """Read the settings file merged with the defaults.
+
+        Has no side effects: it does not write the file and does not touch
+        any widget, so it is safe to call from the alert worker thread.
+
+        Returns:
+            A new settings dictionary
+        """
         config_path = get_resource_path("settings.json")
         try:
             with open(config_path, encoding="utf-8") as config_file:
                 settings = json.load(config_file)
-                settings = self.merge_settings_with_defaults(settings)
-        except (FileNotFoundError, json.JSONDecodeError):
+            if not isinstance(settings, dict):
+                raise ValueError("settings.json must contain an object")
+            return self.merge_settings_with_defaults(settings)
+        except (OSError, ValueError) as e:
+            # json.JSONDecodeError is a ValueError
             logger.debug(
-                "Setting Menu: Error reading settings file. Using default settings."
+                "Setting Menu: Error reading settings file (%s). Using default settings.",
+                e,
             )
-            settings = self.default
+            return copy.deepcopy(self.default)
+
+    def load_settings(self):
+        """Read the settings, write them back normalized and show them in the menu.
+
+        Must be called from the GUI thread.
+        """
+        settings = self.read_settings()
         self.save_settings(settings)
         self.apply_settings(settings)
         return settings
@@ -77,7 +97,7 @@ class SettingMenu:
         if defaults is None:
             defaults = self.default
 
-        merged_settings = defaults.copy()
+        merged_settings = copy.deepcopy(defaults)
         for key, value in defaults.items():
             if key in settings:
                 if isinstance(value, dict) and isinstance(settings[key], dict):
@@ -175,7 +195,7 @@ class SettingMenu:
 
     def save_settings(self, settings=None):
         if settings is None:
-            settings = self.default
+            settings = copy.deepcopy(self.default)
 
         config_path = get_resource_path("settings.json")
         with open(config_path, encoding="utf-8", mode="w") as config_file:
@@ -188,7 +208,7 @@ class SettingMenu:
     def save(self):
         """Save settings to disk only (does not apply to running system)."""
         try:
-            settings = DEFAULT_SETTINGS.copy()
+            settings = copy.deepcopy(DEFAULT_SETTINGS)
             settings.update(
                 {
                     "logging": self.logging.get(),
@@ -560,112 +580,66 @@ class SettingMenu:
     def volumeslider_event(self, slider_value):
         self.empty_label_3.configure(text=f"{int(slider_value)}%")
 
+    def _test_sound(self, sound_path: str, label: str) -> None:
+        """Play a sound file once without blocking the GUI.
+
+        Args:
+            sound_path: Path to the WAV file
+            label: Name used in the log messages (e.g. "Alarm")
+        """
+        # pylint: disable=import-outside-toplevel
+        import numpy as np
+        import sounddevice as sd
+        import soundfile as sf
+
+        from evealert.constants import AUDIO_CHANNELS
+
+        if self.play_alarm.get():
+            self.main.write_message(
+                f"Audio Test: {label} is muted. Uncheck 'Mute Alarm' to test.",
+                "yellow",
+            )
+            return
+
+        try:
+            data, samplerate = sf.read(sound_path, dtype="int16")
+            if data.ndim == 1:
+                # Convert Mono -> Stereo
+                data = np.stack([data, data], axis=-1)
+            elif data.ndim == 2 and data.shape[1] == 1:
+                data = np.repeat(data, AUDIO_CHANNELS, axis=1)
+
+            volume = int(self.volume_scale.get()) / 100.0
+            data = (data * volume).astype("int16")
+
+            # Non-blocking playback; report completion via the Tk event loop
+            sd.play(data, samplerate)
+            self.main.write_message(f"Audio Test: Playing {label.lower()} sound...", "green")
+            duration_ms = int(len(data) / samplerate * 1000)
+            self.main.after(
+                duration_ms,
+                lambda: self.main.write_message(
+                    f"Audio Test: {label} sound completed.", "green"
+                ),
+            )
+        except FileNotFoundError:
+            self.main.write_message(
+                f"Audio Test: Sound file not found: {sound_path}", "red"
+            )
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            self.main.write_message(f"Audio Test: Error playing sound. {e}", "red")
+            logger.exception("Error testing %s sound: %s", label, e)
+
     def test_alarm_sound(self):
         """Test alarm sound playback."""
-        try:
-            import numpy as np  # pylint: disable=import-outside-toplevel
-            import sounddevice as sd  # pylint: disable=import-outside-toplevel
-            import soundfile as sf  # pylint: disable=import-outside-toplevel
+        # pylint: disable=import-outside-toplevel
+        from evealert.manager.alertmanager import ALARM_SOUND
 
-            # pylint: disable=import-outside-toplevel
-            from evealert.constants import AUDIO_CHANNELS
-            from evealert.manager.alertmanager import ALARM_SOUND
-
-            # Check if muted
-            if self.play_alarm.get():
-                self.main.write_message(
-                    "Audio Test: Alarm is muted. Uncheck 'Mute Alarm' to test.",
-                    "yellow",
-                )
-                return
-
-            self.main.write_message("Audio Test: Playing alarm sound...", "green")
-
-            # Play sound directly using sounddevice
-            try:
-                # Read audio data with soundfile
-                data, samplerate = sf.read(ALARM_SOUND, dtype="int16")
-
-                # Check data shape and adjust channels if necessary
-                if data.ndim == 1:
-                    # Convert Mono -> Stereo
-                    data = np.stack([data, data], axis=-1)
-                elif data.ndim == 2 and data.shape[1] == 1:
-                    # (N, 1) -> (N, AUDIO_CHANNELS)
-                    data = np.repeat(data, AUDIO_CHANNELS, axis=1)
-
-                # Play the audio data (blocking)
-                sd.play(data, samplerate)
-                sd.wait()  # Wait for playback to finish
-
-                self.main.write_message("Audio Test: Alarm sound completed.", "green")
-            except FileNotFoundError:
-                self.main.write_message(
-                    f"Audio Test: Sound file not found: {ALARM_SOUND}", "red"
-                )
-            except Exception as e:
-                self.main.write_message(
-                    f"Audio Test: Error playing sound. {str(e)}", "red"
-                )
-                logger.exception("Error testing alarm sound: %s", e)
-
-        except Exception as e:
-            self.main.write_message(f"Audio Test: Error. {str(e)}", "red")
-            logger.exception("Error in test_alarm_sound: %s", e)
+        self._test_sound(ALARM_SOUND, "Alarm")
 
     def test_faction_sound(self):
         """Test faction sound playback."""
-        try:
-            import numpy as np  # pylint: disable=import-outside-toplevel
-            import sounddevice as sd  # pylint: disable=import-outside-toplevel
-            import soundfile as sf  # pylint: disable=import-outside-toplevel
+        # pylint: disable=import-outside-toplevel
+        from evealert.manager.alertmanager import FACTION_SOUND
 
-            # pylint: disable=import-outside-toplevel
-            from evealert.constants import AUDIO_CHANNELS
-            from evealert.manager.alertmanager import FACTION_SOUND
-
-            # Check if muted
-            if self.play_alarm.get():
-                self.main.write_message(
-                    "Audio Test: Alarm is muted. Uncheck 'Mute Alarm' to test.",
-                    "yellow",
-                )
-                return
-
-            self.main.write_message("Audio Test: Playing faction sound...", "green")
-
-            # Play sound directly using sounddevice
-            try:
-                # Read audio data with soundfile
-                data, samplerate = sf.read(FACTION_SOUND, dtype="int16")
-
-                # Check data shape and adjust channels if necessary
-                if data.ndim == 1:
-                    # Convert Mono -> Stereo
-                    data = np.stack([data, data], axis=-1)
-                elif data.ndim == 2 and data.shape[1] == 1:
-                    # (N, 1) -> (N, AUDIO_CHANNELS)
-                    data = np.repeat(data, AUDIO_CHANNELS, axis=1)
-
-                # Apply volume (convert 0-100 to 0.0-1.0)
-                volume = self.volume_scale.get() / 100.0
-                data_with_volume = (data * volume).astype("int16")
-
-                # Play the audio data (blocking)
-                sd.play(data_with_volume, samplerate)
-                sd.wait()  # Wait for playback to finish
-
-                self.main.write_message("Audio Test: Faction sound completed.", "green")
-            except FileNotFoundError:
-                self.main.write_message(
-                    f"Audio Test: Sound file not found: {FACTION_SOUND}", "red"
-                )
-            except Exception as e:
-                self.main.write_message(
-                    f"Audio Test: Error playing sound. {str(e)}", "red"
-                )
-                logger.exception("Error testing faction sound: %s", e)
-
-        except Exception as e:
-            self.main.write_message(f"Audio Test: Error. {str(e)}", "red")
-            logger.exception("Error in test_faction_sound: %s", e)
+        self._test_sound(FACTION_SOUND, "Faction")
