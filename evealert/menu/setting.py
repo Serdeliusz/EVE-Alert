@@ -588,8 +588,10 @@ class SettingMenu:
                 self.main.winfo_height(),
             )
 
-            config_window_width = 650
-            config_window_height = 400
+            # Size the window to its content
+            self.setting_window.update_idletasks()
+            config_window_width = max(650, self.setting_window.winfo_reqwidth())
+            config_window_height = max(400, self.setting_window.winfo_reqheight())
             config_window_x = config_menu_x + config_menu_width + 10
             config_window_y = config_menu_y + config_menu_height + 40
 

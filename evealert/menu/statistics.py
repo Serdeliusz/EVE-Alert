@@ -44,6 +44,13 @@ class StatisticsWindow(customtkinter.CTkToplevel):
         self.init_widgets()
         self.update_statistics()
 
+        # Grow the window when the content does not fit (history and buttons
+        # were cut off at the fixed size)
+        self.update_idletasks()
+        width = max(500, self.winfo_reqwidth())
+        height = max(550, self.winfo_reqheight())
+        self.geometry(f"{width}x{height}")
+
     def init_widgets(self) -> None:
         """Initialize all GUI widgets."""
         # Main container with padding
