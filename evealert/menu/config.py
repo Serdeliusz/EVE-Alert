@@ -35,15 +35,15 @@ class ConfigModeMenu:
         self.faction_region = False
 
         self.description_window = customtkinter.CTkToplevel(self.main)
-        self.description_window.title("Config Mode")
+        self.description_window.title("Tryb konfiguracji")
         self.description_window.withdraw()
 
-        description_text = "Alert Region: Press F1 to activate.\n"
-        description_text += "Faction Mode: Press F2 to activate.\n"
+        description_text = "Obszar alarmu: naciśnij F1.\n"
+        description_text += "Obszar frakcji: naciśnij F2.\n"
         description_text += (
-            "\nAfter pressing F1 or F2 set your region with Marquee Selection.\n"
+            "\nPo naciśnięciu F1 lub F2 zaznacz obszar myszą (przeciągnij).\n"
         )
-        description_text += "\nTo abort everything Press ESC.\n"
+        description_text += "\nAby przerwać, naciśnij ESC.\n"
 
         menu_frame = customtkinter.CTkFrame(self.description_window)
         menu_frame.pack(side="left", padx=20, pady=20)
@@ -54,7 +54,7 @@ class ConfigModeMenu:
         description_label.pack(padx=20, pady=20)
 
         close_button = customtkinter.CTkButton(
-            menu_frame, text="Close", command=self.clean_up
+            menu_frame, text="Zamknij", command=self.clean_up
         )
         close_button.pack(pady=10)
 

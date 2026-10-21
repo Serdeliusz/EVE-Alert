@@ -13,6 +13,18 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger("menu")
 
+# Hint texts shown in empty entry fields. They disappear when the field is
+# clicked and are never saved as values.
+WEBHOOK_PLACEHOLDER = "Wklej link webhooka"
+SYSTEM_NAME_PLACEHOLDER = "np. Jita"
+# Older versions saved the English hint texts as values
+PLACEHOLDER_VALUES = {
+    WEBHOOK_PLACEHOLDER,
+    SYSTEM_NAME_PLACEHOLDER,
+    "Enter a Webhook URL",
+    "Enter a System Name",
+}
+
 DEFAULT_SETTINGS = {
     "logging": "INFO",
     "alert_region_1": {"x": 0, "y": 0},
@@ -24,8 +36,8 @@ DEFAULT_SETTINGS = {
     "cooldown_timer": {"value": 30},
     "volume": {"value": 100},
     "server": {
-        "name": "Enter a Webhook URL",
-        "system": "Enter a System Name",
+        "name": "",
+        "system": "",
         "mute": False,
     },
 }
@@ -41,7 +53,7 @@ class SettingMenu:
         self.changed = False
 
         self.setting_window = customtkinter.CTkToplevel(self.main)
-        self.setting_window.title("Settings")
+        self.setting_window.title("Ustawienia")
         self.setting_window.withdraw()
 
         self.play_alarm = customtkinter.BooleanVar()
@@ -73,7 +85,7 @@ class SettingMenu:
                 settings = json.load(config_file)
             if not isinstance(settings, dict):
                 raise ValueError("settings.json must contain an object")
-            return self.merge_settings_with_defaults(settings)
+            return self._strip_placeholders(self.merge_settings_with_defaults(settings))
         except (OSError, ValueError) as e:
             # json.JSONDecodeError is a ValueError
             logger.debug(
@@ -81,6 +93,30 @@ class SettingMenu:
                 e,
             )
             return copy.deepcopy(self.default)
+
+    @staticmethod
+    def _strip_placeholders(settings):
+        """Replace hint texts saved by older versions with empty values."""
+        server = settings.get("server")
+        if isinstance(server, dict):
+            for key in ("name", "system"):
+                value = server.get(key)
+                if not isinstance(value, str) or value.strip() in PLACEHOLDER_VALUES:
+                    server[key] = ""
+                else:
+                    server[key] = value.strip()
+        return settings
+
+    @staticmethod
+    def _set_entry_text(entry, value) -> None:
+        """Replace the text of an entry; an empty value shows its hint text."""
+        entry.delete(0, customtkinter.END)
+        if value not in (None, ""):
+            entry.insert(0, value)
+        elif hasattr(entry, "_activate_placeholder"):
+            # A new CTkEntry counts as focused until it loses focus once, so
+            # delete() alone does not bring the hint text back.
+            entry._activate_placeholder()
 
     def load_settings(self):
         """Read the settings, write them back normalized and show them in the menu.
@@ -118,7 +154,7 @@ class SettingMenu:
         try:
             required_prefix = "https://discord.com/api/webhooks/"
             if not webhookurl.startswith(required_prefix):
-                raise ValueError(f"It must start with '{required_prefix}'.")
+                raise ValueError(f"Adres musi zaczynać się od '{required_prefix}'.")
             self.main.webhook = Webhook(
                 webhookurl,
                 username="Gneuten",
@@ -171,25 +207,21 @@ class SettingMenu:
             self.volume_scale.set(settings["volume"]["value"])
             self.volumeslider_event(settings["volume"]["value"])
 
-            self.system_name.delete(0, customtkinter.END)
-            self.system_name.insert(0, settings["server"]["system"])
+            self._set_entry_text(self.system_name, settings["server"]["system"])
 
-            self.webhook.delete(0, customtkinter.END)
+            webhook_url = settings["server"]["name"]
+            self._set_entry_text(self.webhook, webhook_url)
+            if webhook_url:
+                self._activate_webhook(webhook_url)
+            else:
+                self.main.webhook = None
 
-            # Check if the webhook URL is valid
-            if (
-                settings["server"]["name"] != "Enter a Webhook URL"
-                and settings["server"]["name"] != ""
-            ):
-                self._activate_webhook(settings["server"]["name"])
-
-            self.webhook.insert(0, settings["server"]["name"])
             self.play_alarm.set(settings["server"]["mute"])
 
         except KeyError as e:
             logger.exception(e)
             self.main.write_message(
-                "Setting Menu: Error reading settings file. read logs for more information",
+                "Ustawienia: błąd odczytu pliku ustawień, szczegóły w logach.",
                 "red",
             )
 
@@ -233,17 +265,17 @@ class SettingMenu:
                     "cooldown_timer": {"value": int(self.cooldown_timer.get())},
                     "volume": {"value": int(self.volume_scale.get())},
                     "server": {
-                        "name": self.webhook.get(),
-                        "system": self.system_name.get(),
+                        "name": self.webhook.get().strip(),
+                        "system": self.system_name.get().strip(),
                         "mute": self.play_alarm.get(),
                     },
                 }
             )
             self.save_settings(settings)
-            self.main.write_message("Settings: Saved to disk.", "green")
+            self.main.write_message("Ustawienia: zapisano na dysku.", "green")
         except ValueError as e:
             self.main.write_message(
-                "Setting Menu: Error saving settings. Please check the values.", "red"
+                "Ustawienia: błąd zapisu. Sprawdź wpisane wartości.", "red"
             )
             logger.error(e)
 
@@ -263,18 +295,18 @@ class SettingMenu:
             # Validate detection scales
             is_valid, error = ConfigValidator.validate_detection_scale(detection_scale)
             if not is_valid:
-                self.main.write_message(f"Validation Error: {error}", "red")
+                self.main.write_message(f"Błąd walidacji: {error}", "red")
                 return
 
             is_valid, error = ConfigValidator.validate_detection_scale(faction_scale)
             if not is_valid:
-                self.main.write_message(f"Validation Error: {error}", "red")
+                self.main.write_message(f"Błąd walidacji: {error}", "red")
                 return
 
             # Validate cooldown
             is_valid, error = ConfigValidator.validate_cooldown_timer(cooldown)
             if not is_valid:
-                self.main.write_message(f"Validation Error: {error}", "red")
+                self.main.write_message(f"Błąd walidacji: {error}", "red")
                 return
 
             # Apply to AlertAgent if running
@@ -286,13 +318,13 @@ class SettingMenu:
                 self.main.alert.mute = mute
 
                 # Update webhook if changed
-                webhook_url = self.webhook.get()
-                if webhook_url and webhook_url != "Enter a Webhook URL":
+                webhook_url = self.webhook.get().strip()
+                if webhook_url:
                     self._activate_webhook(webhook_url)
                 else:
                     self.main.webhook = None
 
-                self.main.write_message("Settings: Applied to running system.", "green")
+                self.main.write_message("Ustawienia: zastosowano w działającym systemie.", "green")
                 logger.info(
                     "Runtime settings applied: detection=%d, faction_scale=%d, cooldown=%d, mute=%s",
                     detection_scale,
@@ -302,12 +334,12 @@ class SettingMenu:
                 )
             else:
                 self.main.write_message(
-                    "Settings: No running system to apply to.", "yellow"
+                    "Ustawienia: system nie jest uruchomiony.", "yellow"
                 )
 
         except ValueError as e:
             self.main.write_message(
-                "Setting Menu: Invalid values. Please check your input.", "red"
+                "Ustawienia: nieprawidłowe wartości. Sprawdź wpisane dane.", "red"
             )
             logger.error("Runtime settings apply error: %s", e)
 
@@ -332,13 +364,13 @@ class SettingMenu:
         self.logging = customtkinter.CTkEntry(self.menu_frame)
 
         # 1 Row - Init
-        self.label_x_axis = customtkinter.CTkLabel(self.menu_frame, text="X-Achse")
-        self.label_y_axis = customtkinter.CTkLabel(self.menu_frame, text="Y-Achse")
+        self.label_x_axis = customtkinter.CTkLabel(self.menu_frame, text="Oś X")
+        self.label_y_axis = customtkinter.CTkLabel(self.menu_frame, text="Oś Y")
 
         # 2 Row - Init
         # Alert Region Position 1
         self.alert_region_label_1 = customtkinter.CTkLabel(
-            self.menu_frame, text="Alert Region Left Upper Corner:", justify="left"
+            self.menu_frame, text="Obszar alarmu – lewy górny róg:", justify="left"
         )
         self.alert_region_x_first = customtkinter.CTkEntry(self.menu_frame)
         self.alert_region_y_first = customtkinter.CTkEntry(self.menu_frame)
@@ -346,7 +378,7 @@ class SettingMenu:
         # 3 Row - Init
         # Alert Region Position 2
         self.alert_region_label_2 = customtkinter.CTkLabel(
-            self.menu_frame, text="Alert Region Right Lower Corner:", justify="left"
+            self.menu_frame, text="Obszar alarmu – prawy dolny róg:", justify="left"
         )
         self.alert_region_x_second = customtkinter.CTkEntry(self.menu_frame)
         self.alert_region_y_second = customtkinter.CTkEntry(self.menu_frame)
@@ -354,7 +386,7 @@ class SettingMenu:
         # 4 Row - Init
         # Alert Region Position 1
         self.faction_region_label_1 = customtkinter.CTkLabel(
-            self.menu_frame, text="Faction Region Left Upper Corner:", justify="left"
+            self.menu_frame, text="Obszar frakcji – lewy górny róg:", justify="left"
         )
         self.faction_region_x_first = customtkinter.CTkEntry(self.menu_frame)
         self.faction_region_y_first = customtkinter.CTkEntry(self.menu_frame)
@@ -362,7 +394,7 @@ class SettingMenu:
         # 5 Row - Init
         # Alert Region Position 2
         self.faction_region_label_2 = customtkinter.CTkLabel(
-            self.menu_frame, text="Faction Region Right Lower Corner:", justify="left"
+            self.menu_frame, text="Obszar frakcji – prawy dolny róg:", justify="left"
         )
         self.faction_region_x_second = customtkinter.CTkEntry(self.menu_frame)
         self.faction_region_y_second = customtkinter.CTkEntry(self.menu_frame)
@@ -370,7 +402,7 @@ class SettingMenu:
         # Row 6 - Init
         # Slider
         self.slider_label = customtkinter.CTkLabel(
-            self.menu_frame, text="Detection Threshold"
+            self.menu_frame, text="Czułość wykrywania alarmu"
         )
         self.detectionscale = customtkinter.DoubleVar()
         self.slider = customtkinter.CTkSlider(
@@ -386,7 +418,7 @@ class SettingMenu:
         # Row 7 - Init
         # Slider
         self.faction_slider_label = customtkinter.CTkLabel(
-            self.menu_frame, text="Faction Detection Threshold"
+            self.menu_frame, text="Czułość wykrywania frakcji"
         )
         self.faction_scale = customtkinter.DoubleVar()
         self.slider2 = customtkinter.CTkSlider(
@@ -402,7 +434,7 @@ class SettingMenu:
         # Row 8 - Init
         # Volume Slider
         self.volume_slider_label = customtkinter.CTkLabel(
-            self.menu_frame, text="Volume"
+            self.menu_frame, text="Głośność"
         )
         self.volume_scale = customtkinter.DoubleVar()
         self.volume_slider = customtkinter.CTkSlider(
@@ -416,23 +448,23 @@ class SettingMenu:
         )
 
         self.cooldown_timer_label = customtkinter.CTkLabel(
-            self.menu_frame, text="Cooldown Timer:", justify="left"
+            self.menu_frame, text="Przerwa między alarmami:", justify="left"
         )
         self.cooldown_timer = customtkinter.CTkEntry(self.menu_frame)
         self.cooldown_timer_text = customtkinter.CTkLabel(
-            self.menu_frame, text="Seconds", justify="left"
+            self.menu_frame, text="sekund", justify="left"
         )
 
         self.save_button = customtkinter.CTkButton(
-            self.menu_frame, text="Save", command=self.save
+            self.menu_frame, text="Zapisz", command=self.save
         )
 
         self.apply_button = customtkinter.CTkButton(
-            self.menu_frame, text="Apply", command=self.apply_settings_runtime
+            self.menu_frame, text="Zastosuj", command=self.apply_settings_runtime
         )
 
         self.close_button = customtkinter.CTkButton(
-            self.menu_frame, text="Close", command=self.clean_up
+            self.menu_frame, text="Zamknij", command=self.clean_up
         )
 
         self.empty_label_1 = customtkinter.CTkLabel(
@@ -448,24 +480,28 @@ class SettingMenu:
         )
 
         self.webhook_label = customtkinter.CTkLabel(
-            self.menu_frame, text="Webhook:", justify="left"
+            self.menu_frame, text="Webhook Discord:", justify="left"
         )
-        self.webhook = customtkinter.CTkEntry(self.menu_frame)
+        self.webhook = customtkinter.CTkEntry(
+            self.menu_frame, placeholder_text=WEBHOOK_PLACEHOLDER
+        )
         self.system_name_label = customtkinter.CTkLabel(
-            self.menu_frame, text="System Name:", justify="left"
+            self.menu_frame, text="Nazwa systemu:", justify="left"
         )
-        self.system_name = customtkinter.CTkEntry(self.menu_frame)
+        self.system_name = customtkinter.CTkEntry(
+            self.menu_frame, placeholder_text=SYSTEM_NAME_PLACEHOLDER
+        )
 
         self.play_alarm_checkbox = customtkinter.CTkCheckBox(
-            self.menu_frame, text="Mute Alarm", variable=self.play_alarm
+            self.menu_frame, text="Wycisz alarm", variable=self.play_alarm
         )
 
         self.test_alarm_button = customtkinter.CTkButton(
-            self.menu_frame, text="Test Alarm Sound", command=self.test_alarm_sound
+            self.menu_frame, text="Testuj dźwięk alarmu", command=self.test_alarm_sound
         )
 
         self.test_faction_button = customtkinter.CTkButton(
-            self.menu_frame, text="Test Faction Sound", command=self.test_faction_sound
+            self.menu_frame, text="Testuj dźwięk frakcji", command=self.test_faction_sound
         )
 
         # Init Visuals
@@ -558,8 +594,10 @@ class SettingMenu:
                 self.main.winfo_height(),
             )
 
-            config_window_width = 650
-            config_window_height = 400
+            # Size the window to its content
+            self.setting_window.update_idletasks()
+            config_window_width = max(650, self.setting_window.winfo_reqwidth())
+            config_window_height = max(400, self.setting_window.winfo_reqheight())
             config_window_x = config_menu_x + config_menu_width + 10
             config_window_y = config_menu_y + config_menu_height + 40
 
@@ -596,7 +634,7 @@ class SettingMenu:
 
         if self.play_alarm.get():
             self.main.write_message(
-                f"Audio Test: {label} is muted. Uncheck 'Mute Alarm' to test.",
+                f"Test dźwięku: dźwięk jest wyciszony. Odznacz 'Wycisz alarm', aby przetestować.",
                 "yellow",
             )
             return
@@ -614,20 +652,20 @@ class SettingMenu:
 
             # Non-blocking playback; report completion via the Tk event loop
             sd.play(data, samplerate)
-            self.main.write_message(f"Audio Test: Playing {label.lower()} sound...", "green")
+            self.main.write_message(f"Test dźwięku: odtwarzam dźwięk {label}...", "green")
             duration_ms = int(len(data) / samplerate * 1000)
             self.main.after(
                 duration_ms,
                 lambda: self.main.write_message(
-                    f"Audio Test: {label} sound completed.", "green"
+                    f"Test dźwięku: dźwięk {label} zakończony.", "green"
                 ),
             )
         except FileNotFoundError:
             self.main.write_message(
-                f"Audio Test: Sound file not found: {sound_path}", "red"
+                f"Test dźwięku: nie znaleziono pliku: {sound_path}", "red"
             )
         except Exception as e:  # pylint: disable=broad-exception-caught
-            self.main.write_message(f"Audio Test: Error playing sound. {e}", "red")
+            self.main.write_message(f"Test dźwięku: błąd odtwarzania. {e}", "red")
             logger.exception("Error testing %s sound: %s", label, e)
 
     def test_alarm_sound(self):
@@ -635,11 +673,11 @@ class SettingMenu:
         # pylint: disable=import-outside-toplevel
         from evealert.manager.alertmanager import ALARM_SOUND
 
-        self._test_sound(ALARM_SOUND, "Alarm")
+        self._test_sound(ALARM_SOUND, "alarmu")
 
     def test_faction_sound(self):
         """Test faction sound playback."""
         # pylint: disable=import-outside-toplevel
         from evealert.manager.alertmanager import FACTION_SOUND
 
-        self._test_sound(FACTION_SOUND, "Faction")
+        self._test_sound(FACTION_SOUND, "frakcji")

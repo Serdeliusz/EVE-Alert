@@ -138,7 +138,7 @@ class OverlaySystem:
             self.end_y += monitor.y
 
         self.main.write_message(
-            f"Selected region: ({self.start_x}, {self.start_y}) to ({self.end_x}, {self.end_y})"
+            f"Zaznaczony obszar: od ({self.start_x}, {self.start_y}) do ({self.end_x}, {self.end_y})"
         )
 
         if self.main.menu.config.is_alert_region:
@@ -166,7 +166,7 @@ class OverlaySystem:
         self.main.menu.setting.save_settings(settings)
         self.main.menu.config.changed = True
         self.clean_up()
-        self.main.write_message("Settings: Enemy Deactivated.")
+        self.main.write_message("Ustawienia: zapisano obszar alarmu.")
 
     def set_faction_region(self) -> None:
         """Save the selected region as the faction detection area.
@@ -188,4 +188,4 @@ class OverlaySystem:
         self.main.menu.setting.save_settings(settings)
         self.main.menu.config.changed = True
         self.clean_up()
-        self.main.write_message("Settings: Faction Deactivated.")
+        self.main.write_message("Ustawienia: zapisano obszar frakcji.")

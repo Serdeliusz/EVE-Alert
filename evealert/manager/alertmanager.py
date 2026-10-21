@@ -12,6 +12,7 @@ import soundfile as sf
 
 from evealert.constants import (
     ALARM_SOUND_FILE,
+    ALARM_TYPE_NAMES,
     ALERT_IMAGE_PREFIX,
     ALERT_STOP_TIMEOUT,
     AUDIO_CHANNELS,
@@ -140,19 +141,19 @@ class AlertAgent:
     def _validate_audio_files(self):
         """Validate that required audio files exist."""
         valid_alarm, error_alarm = ConfigValidator.validate_audio_file(
-            ALARM_SOUND, "Alarm sound"
+            ALARM_SOUND, "Dźwięk alarmu"
         )
         valid_faction, error_faction = ConfigValidator.validate_audio_file(
-            FACTION_SOUND, "Faction sound"
+            FACTION_SOUND, "Dźwięk frakcji"
         )
 
         if not valid_alarm:
             logger.warning(error_alarm)
-            self.main.write_message(f"Warning: {error_alarm}", "red")
+            self.main.write_message(f"Uwaga: {error_alarm}", "red")
 
         if not valid_faction:
             logger.warning(error_faction)
-            self.main.write_message(f"Warning: {error_faction}", "red")
+            self.main.write_message(f"Uwaga: {error_faction}", "red")
 
     @property
     def is_running(self) -> bool:
@@ -199,19 +200,19 @@ class AlertAgent:
         if self.is_alive:
             if self._stop_requested.is_set():
                 self.main.write_message(
-                    "System: EVE Alert is still stopping. Try again in a moment."
+                    "System: EVE Alert jeszcze się zatrzymuje. Spróbuj za chwilę."
                 )
             else:
-                self.main.write_message("System: EVE Alert is already running.")
+                self.main.write_message("System: EVE Alert już działa.")
             return False
 
         if not self.load_settings():
-            self.main.write_message("System: Fix the settings and start again.", "red")
+            self.main.write_message("System: popraw ustawienia i uruchom ponownie.", "red")
             return False
 
         if not self.alert_vision.has_templates:
             self.main.write_message(
-                "System: No alert images found in the img folder.", "red"
+                "System: brak obrazków alarmu w folderze img.", "red"
             )
             return False
 
@@ -223,7 +224,7 @@ class AlertAgent:
             target=self._thread_main, name="EVEAlertWorker", daemon=True
         )
         self._thread.start()
-        self.main.write_message("System: EVE Alert started.", "green")
+        self.main.write_message("System: EVE Alert uruchomiony.", "green")
         return True
 
     def stop(self) -> None:
@@ -262,7 +263,7 @@ class AlertAgent:
         except Exception as e:  # pylint: disable=broad-exception-caught
             logger.exception("Alert system crashed: %s", e)
             self.main.write_message(
-                "System: EVE Alert stopped because of an error. Check the logs.",
+                "System: EVE Alert zatrzymany z powodu błędu. Szczegóły w logach.",
                 "red",
             )
         finally:
@@ -310,7 +311,7 @@ class AlertAgent:
         """Update the GUI after the worker thread ended (GUI thread)."""
         self.main.update_alert_button()
         self.main.update_faction_button()
-        self.main.write_message("System: EVE Alert stopped.", "green")
+        self.main.write_message("System: EVE Alert zatrzymany.", "green")
 
     async def _main(self) -> None:
         """Run the alarm loop and the debug window loop together."""
@@ -349,7 +350,7 @@ class AlertAgent:
         if not is_valid:
             error_msg = "Configuration validation failed:\n" + "\n".join(errors)
             logger.error(error_msg)
-            self.main.write_message("Settings validation failed. Check logs.", "red")
+            self.main.write_message("Błędne ustawienia, szczegóły w logach.", "red")
             for error in errors:
                 self.main.write_message(f"  - {error}", "red")
             return False
@@ -372,7 +373,7 @@ class AlertAgent:
             self.system_name = str(server.get("system", ""))
         except (KeyError, TypeError, ValueError) as e:
             logger.exception("Invalid settings: %s", e)
-            self.main.write_message("Settings: Invalid settings file.", "red")
+            self.main.write_message("Ustawienia: błędny plik ustawień.", "red")
             return False
 
         # A new faction region gets a new chance after it was disabled
@@ -387,10 +388,10 @@ class AlertAgent:
             # is not lost.
             setting_menu.changed = False
             if self.load_settings():
-                self.main.write_message("Settings: Loaded.", "green")
+                self.main.write_message("Ustawienia: wczytano.", "green")
             else:
                 self.main.write_message(
-                    "Settings: Keeping the previous settings.", "yellow"
+                    "Ustawienia: zostają poprzednie ustawienia.", "yellow"
                 )
 
     # ------------------------------------------------------------------
@@ -427,7 +428,7 @@ class AlertAgent:
         """Validate that screenshot capture works for configured alert region."""
         self.check = self._capture_alert_region() is not None
         if not self.check:
-            self.main.write_message("Wrong Alert Settings.", "red")
+            self.main.write_message("Błędne ustawienia obszaru alarmu.", "red")
 
     def update_detection(self) -> bool:
         """Capture both regions and update the enemy and faction flags.
@@ -439,7 +440,7 @@ class AlertAgent:
         screenshot = self._capture_alert_region()
         if screenshot is None:
             self.main.write_message(
-                "Wrong Alert Settings: the alert region could not be captured.",
+                "Błędne ustawienia: nie udało się zrobić zrzutu obszaru alarmu.",
                 "red",
             )
             return False
@@ -462,7 +463,7 @@ class AlertAgent:
         screenshot = self._capture_faction_region()
         error = None
         if screenshot is None:
-            error = "the faction region could not be captured"
+            error = "nie udało się zrobić zrzutu obszaru frakcji"
         else:
             try:
                 points, _ = self.alert_vision_faction.detect(
@@ -475,7 +476,7 @@ class AlertAgent:
 
         self.faction_enabled = False
         self.main.write_message(
-            f"Faction detection disabled: {error}. Check the faction region.",
+            f"Wykrywanie frakcji wyłączone: {error}. Sprawdź obszar frakcji.",
             "yellow",
         )
         return False
@@ -544,7 +545,11 @@ class AlertAgent:
 
         if alarm_type == "Enemy" and self.webhook_sent:
             self.webhook_sent = False
-            await self._execute_webhook(f"Alarm Reset: {self.system_name}!")
+            if self.system_name:
+                message = f"Koniec alarmu: {self.system_name}"
+            else:
+                message = "Koniec alarmu"
+            await self._execute_webhook(message)
 
     async def alarm_detection(
         self, alarm_text: str, sound: str = ALARM_SOUND, alarm_type: str = "Enemy"
@@ -569,7 +574,11 @@ class AlertAgent:
 
         if self.main.webhook and alarm_type == "Enemy" and self.webhook_sent is False:
             self.webhook_cooldown_timer = current_time + WEBHOOK_COOLDOWN
-            if await self._execute_webhook(f"Enemy Appears in {self.system_name}!"):
+            if self.system_name:
+                message = f"Wróg w {self.system_name}!"
+            else:
+                message = "Wróg w systemie!"
+            if await self._execute_webhook(message):
                 self.webhook_sent = True
 
     async def play_sound(self, sound: str, alarm_type: str) -> None:
@@ -587,7 +596,7 @@ class AlertAgent:
         current_time = time.time()
         if current_time < self.cooldown_timers[alarm_type]:
             self.main.write_message(
-                f"{alarm_type} Sound is in cooldown period.", "yellow"
+                f"Dźwięk ({ALARM_TYPE_NAMES.get(alarm_type, alarm_type)}): trwa przerwa.", "yellow"
             )
             return
 
@@ -599,7 +608,7 @@ class AlertAgent:
             self.cooldown_timers[alarm_type] = current_time + self.cooldowntimer
             self.alarm_trigger_counts[alarm_type] = 0
             self.main.write_message(
-                f"{alarm_type} Sound is now in cooldown for {self.cooldowntimer} seconds.",
+                f"Dźwięk ({ALARM_TYPE_NAMES.get(alarm_type, alarm_type)}): przerwa na {self.cooldowntimer} s.",
                 "yellow",
             )
             return
@@ -631,7 +640,7 @@ class AlertAgent:
             except Exception as e:  # pylint: disable=broad-exception-caught
                 if self.alarm_trigger_counts[alarm_type] <= 1:
                     self.main.open_error_window(
-                        "Error Playing Sound. Check Logs for more information."
+                        "Błąd odtwarzania dźwięku. Szczegóły w logach."
                     )
                 logger.exception("Error Playing Sound: %s", e)
             finally:
@@ -656,10 +665,10 @@ class AlertAgent:
 
                 if self.faction:
                     self.alarm_detected = True
-                    await self.alarm_detection("Faction Spawn!", FACTION_SOUND, "Faction")
+                    await self.alarm_detection("Spawn frakcji!", FACTION_SOUND, "Faction")
                 if self.enemy:
                     self.alarm_detected = True
-                    await self.alarm_detection("Enemy Appears!", ALARM_SOUND, "Enemy")
+                    await self.alarm_detection("Wróg w Local!", ALARM_SOUND, "Enemy")
 
                 # Reset alarms that are no longer detected
                 if not self.faction:
@@ -669,6 +678,6 @@ class AlertAgent:
 
                 sleep_time = random.uniform(MAIN_CHECK_SLEEP_MIN, MAIN_CHECK_SLEEP_MAX)
                 self.main.write_message(
-                    f"Next check in {sleep_time:.2f} seconds...",
+                    f"Następne sprawdzenie za {sleep_time:.2f} s...",
                 )
                 await asyncio.sleep(sleep_time)

@@ -34,6 +34,9 @@ SOUND_FOLDER = "sound"
 ALARM_SOUND_FILE = "alarm.wav"
 FACTION_SOUND_FILE = "faction.wav"
 
+# Display names of the alarm types (internal keys stay "Enemy"/"Faction")
+ALARM_TYPE_NAMES = {"Enemy": "Wróg", "Faction": "Frakcja"}
+
 # Image Prefixes
 ALERT_IMAGE_PREFIX = "image_"
 FACTION_IMAGE_PREFIX = "faction_"

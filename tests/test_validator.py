@@ -51,7 +51,7 @@ class TestConfigValidator(unittest.TestCase):
             100, 100, 105, 105
         )
         self.assertFalse(is_valid)
-        self.assertIn("too small", error.lower())
+        self.assertIn("za mały", error.lower())
 
     def test_validate_detection_scale_valid(self):
         """Test valid detection scale."""
@@ -79,7 +79,7 @@ class TestConfigValidator(unittest.TestCase):
         """Test detection scale above maximum."""
         is_valid, error = ConfigValidator.validate_detection_scale(150)
         self.assertFalse(is_valid)
-        self.assertIn("between", error.lower())
+        self.assertIn("zakresie", error.lower())
 
     def test_validate_cooldown_timer_valid(self):
         """Test valid cooldown timer."""
