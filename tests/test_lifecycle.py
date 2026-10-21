@@ -82,14 +82,14 @@ class LifecycleTests(unittest.TestCase):
         self.assertTrue(self.agent.is_running)
         self.assertTrue(_wait_for(lambda: self.agent.play_sound.await_count > 0))
         self.assertTrue(self.agent.is_enemy)
-        self.assertIn("Enemy Appears!", self._texts())
+        self.assertIn("Wróg w Local!", self._texts())
         self.assertIsNot(threading.current_thread(), self.agent._thread)
 
         self.agent.stop()
         self.assertTrue(_wait_for(lambda: not self.agent.is_alive))
         self.assertFalse(self.agent.is_running)
         self.assertFalse(self.agent.is_enemy)
-        self.assertIn("System: EVE Alert stopped.", self._texts())
+        self.assertIn("System: EVE Alert zatrzymany.", self._texts())
         self.main.update_alert_button.assert_called()
 
         # A second start uses a new event loop and lock
@@ -101,12 +101,12 @@ class LifecycleTests(unittest.TestCase):
     def test_double_start_is_rejected(self):
         self.assertTrue(self.agent.start())
         self.assertFalse(self.agent.start())
-        self.assertIn("System: EVE Alert is already running.", self._texts())
+        self.assertIn("System: EVE Alert już działa.", self._texts())
 
     def test_no_enemy_no_alarm(self):
         self.frame = _haystack(with_enemy=False)
         self.agent.start()
-        self.assertTrue(_wait_for(lambda: any("Next check" in t for t in self._texts())))
+        self.assertTrue(_wait_for(lambda: any("Następne sprawdzenie" in t for t in self._texts())))
         self.assertFalse(self.agent.is_enemy)
         self.agent.play_sound.assert_not_awaited()
 
@@ -115,15 +115,15 @@ class LifecycleTests(unittest.TestCase):
         self.agent.start()
         self.assertTrue(_wait_for(lambda: not self.agent.is_alive))
         self.assertFalse(self.agent.is_running)
-        self.assertTrue(any("could not be captured" in t for t in self._texts()))
-        self.assertIn("System: EVE Alert stopped.", self._texts())
+        self.assertTrue(any("nie udało się zrobić zrzutu" in t for t in self._texts()))
+        self.assertIn("System: EVE Alert zatrzymany.", self._texts())
 
     def test_unexpected_error_stops_with_message(self):
         self.agent.update_detection = MagicMock(side_effect=RuntimeError("boom"))
         self.agent.start()
         self.assertTrue(_wait_for(lambda: not self.agent.is_alive))
         self.assertFalse(self.agent.is_running)
-        self.assertTrue(any("because of an error" in t for t in self._texts()))
+        self.assertTrue(any("z powodu błędu" in t for t in self._texts()))
 
     def test_faction_failure_disables_only_faction(self):
         def capture(y1, x1, x2, y2):
@@ -141,7 +141,7 @@ class LifecycleTests(unittest.TestCase):
         self.assertTrue(_wait_for(lambda: self.agent.play_sound.await_count > 1))
         self.assertTrue(self.agent.is_alive)
         self.assertFalse(self.agent.faction_enabled)
-        disabled = [t for t in self._texts() if t.startswith("Faction detection disabled")]
+        disabled = [t for t in self._texts() if t.startswith("Wykrywanie frakcji wyłączone")]
         self.assertEqual(len(disabled), 1)
 
     def test_invalid_settings_do_not_start(self):
@@ -189,13 +189,13 @@ class WebhookTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_webhook_uses_system_name_from_settings(self):
         await self.agent.send_webhook_message("Enemy")
-        self.main.webhook.execute.assert_called_once_with("Enemy Appears in Jita!")
+        self.main.webhook.execute.assert_called_once_with("Wróg w Jita!")
         self.assertTrue(self.agent.webhook_sent)
 
     async def test_webhook_without_system_name(self):
         self.agent.system_name = ""
         await self.agent.send_webhook_message("Enemy")
-        self.main.webhook.execute.assert_called_once_with("Enemy Appears!")
+        self.main.webhook.execute.assert_called_once_with("Wróg w systemie!")
 
     async def test_webhook_error_is_handled(self):
         self.main.webhook.execute.side_effect = RuntimeError("discord down")

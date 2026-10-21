@@ -5,6 +5,7 @@ import cv2 as cv
 import numpy as np
 
 from evealert.constants import (
+    ALARM_TYPE_NAMES,
     CV_DETECTION_COLOR,
     CV_LINE_TYPE,
     CV_RECTANGLE_THICKNESS,
@@ -177,18 +178,18 @@ class Vision:
             RegionSizeError: The region is smaller than a template image
         """
         if haystack_img is None or getattr(haystack_img, "size", 0) == 0:
-            raise ScreenshotError(f"Detection {vision_mode} Error: No image captured.")
+            raise ScreenshotError(f"Wykrywanie ({ALARM_TYPE_NAMES.get(vision_mode, vision_mode)}): brak zrzutu ekranu.")
 
         try:
             haystack = _prepare_image(np.asarray(haystack_img))
         except cv.error as e:
             raise ScreenshotError(
-                f"Detection {vision_mode} Error: Unsupported image format."
+                f"Wykrywanie ({ALARM_TYPE_NAMES.get(vision_mode, vision_mode)}): nieobsługiwany format obrazu."
             ) from e
 
         if haystack.shape[0] < self.max_needle_h or haystack.shape[1] < self.max_needle_w:
             raise RegionSizeError(
-                f"Detection {vision_mode} Error: Region is smaller than Detection Region please make a larger Area."
+                f"Wykrywanie ({ALARM_TYPE_NAMES.get(vision_mode, vision_mode)}): obszar jest mniejszy niż szukana ikona. Zaznacz większy obszar."
             )
 
         detection_threshold = _threshold_from_scale(threshold)
@@ -206,7 +207,7 @@ class Vision:
             except cv.error as e:
                 logger.error("Detection %s Error (template %s): %s", vision_mode, idx, e)
                 raise ScreenshotError(
-                    f"Detection {vision_mode} Error: Something went wrong"
+                    f"Wykrywanie ({ALARM_TYPE_NAMES.get(vision_mode, vision_mode)}): coś poszło nie tak."
                 ) from e
 
             ys, xs = np.nonzero(result >= detection_threshold)

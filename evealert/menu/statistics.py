@@ -13,7 +13,7 @@ from tkinter import filedialog
 
 import customtkinter
 
-from evealert.constants import STATUS_CHECK_INTERVAL
+from evealert.constants import ALARM_TYPE_NAMES, STATUS_CHECK_INTERVAL
 
 
 class StatisticsWindow(customtkinter.CTkToplevel):
@@ -37,7 +37,7 @@ class StatisticsWindow(customtkinter.CTkToplevel):
         self.main = main
         self.is_open = True
 
-        self.title("EVE Alert - Statistics")
+        self.title("EVE Alert - Statystyki")
         self.geometry("500x550")
         self.protocol("WM_DELETE_WINDOW", self.close_window)
 
@@ -60,7 +60,7 @@ class StatisticsWindow(customtkinter.CTkToplevel):
         # Title
         title = customtkinter.CTkLabel(
             self.main_frame,
-            text="Alarm Statistics",
+            text="Statystyki alarmów",
             font=customtkinter.CTkFont(size=20, weight="bold"),
         )
         title.pack(pady=(0, 20))
@@ -71,13 +71,13 @@ class StatisticsWindow(customtkinter.CTkToplevel):
 
         session_title = customtkinter.CTkLabel(
             self.session_frame,
-            text="Session Info",
+            text="Sesja",
             font=customtkinter.CTkFont(size=16, weight="bold"),
         )
         session_title.pack(pady=10)
 
         self.session_duration_label = customtkinter.CTkLabel(
-            self.session_frame, text="Duration: 0s", font=customtkinter.CTkFont(size=14)
+            self.session_frame, text="Czas trwania: 0s", font=customtkinter.CTkFont(size=14)
         )
         self.session_duration_label.pack(pady=5)
 
@@ -87,23 +87,23 @@ class StatisticsWindow(customtkinter.CTkToplevel):
 
         totals_title = customtkinter.CTkLabel(
             self.totals_frame,
-            text="Total Alarms",
+            text="Wszystkie alarmy",
             font=customtkinter.CTkFont(size=16, weight="bold"),
         )
         totals_title.pack(pady=10)
 
         self.total_alarms_label = customtkinter.CTkLabel(
-            self.totals_frame, text="Total: 0", font=customtkinter.CTkFont(size=14)
+            self.totals_frame, text="Razem: 0", font=customtkinter.CTkFont(size=14)
         )
         self.total_alarms_label.pack(pady=5)
 
         self.total_enemy_label = customtkinter.CTkLabel(
-            self.totals_frame, text="Enemy: 0", font=customtkinter.CTkFont(size=14)
+            self.totals_frame, text="Wróg: 0", font=customtkinter.CTkFont(size=14)
         )
         self.total_enemy_label.pack(pady=5)
 
         self.total_faction_label = customtkinter.CTkLabel(
-            self.totals_frame, text="Faction: 0", font=customtkinter.CTkFont(size=14)
+            self.totals_frame, text="Frakcja: 0", font=customtkinter.CTkFont(size=14)
         )
         self.total_faction_label.pack(pady=5)
 
@@ -113,28 +113,28 @@ class StatisticsWindow(customtkinter.CTkToplevel):
 
         session_stats_title = customtkinter.CTkLabel(
             self.session_stats_frame,
-            text="Current Session",
+            text="Bieżąca sesja",
             font=customtkinter.CTkFont(size=16, weight="bold"),
         )
         session_stats_title.pack(pady=10)
 
         self.session_alarms_label = customtkinter.CTkLabel(
             self.session_stats_frame,
-            text="Total: 0",
+            text="Razem: 0",
             font=customtkinter.CTkFont(size=14),
         )
         self.session_alarms_label.pack(pady=5)
 
         self.session_enemy_label = customtkinter.CTkLabel(
             self.session_stats_frame,
-            text="Enemy: 0",
+            text="Wróg: 0",
             font=customtkinter.CTkFont(size=14),
         )
         self.session_enemy_label.pack(pady=5)
 
         self.session_faction_label = customtkinter.CTkLabel(
             self.session_stats_frame,
-            text="Faction: 0",
+            text="Frakcja: 0",
             font=customtkinter.CTkFont(size=14),
         )
         self.session_faction_label.pack(pady=5)
@@ -145,7 +145,7 @@ class StatisticsWindow(customtkinter.CTkToplevel):
 
         history_title = customtkinter.CTkLabel(
             self.history_frame,
-            text="Recent History (Last 10)",
+            text="Ostatnie alarmy (10)",
             font=customtkinter.CTkFont(size=16, weight="bold"),
         )
         history_title.pack(pady=10)
@@ -161,7 +161,7 @@ class StatisticsWindow(customtkinter.CTkToplevel):
 
         self.reset_session_button = customtkinter.CTkButton(
             self.buttons_frame,
-            text="Reset Session",
+            text="Zeruj sesję",
             command=self.reset_session,
             width=120,
         )
@@ -169,7 +169,7 @@ class StatisticsWindow(customtkinter.CTkToplevel):
 
         self.clear_history_button = customtkinter.CTkButton(
             self.buttons_frame,
-            text="Clear History",
+            text="Wyczyść historię",
             command=self.clear_history,
             width=120,
         )
@@ -177,7 +177,7 @@ class StatisticsWindow(customtkinter.CTkToplevel):
 
         self.export_button = customtkinter.CTkButton(
             self.buttons_frame,
-            text="Export History",
+            text="Eksportuj historię",
             command=self.export_history,
             width=120,
         )
@@ -192,23 +192,23 @@ class StatisticsWindow(customtkinter.CTkToplevel):
 
         # Update session duration
         self.session_duration_label.configure(
-            text=f"Duration: {stats.get_session_duration()}"
+            text=f"Czas trwania: {stats.get_session_duration()}"
         )
 
         # Update total statistics
-        self.total_alarms_label.configure(text=f"Total: {stats.total_alarms}")
-        self.total_enemy_label.configure(text=f"Enemy: {stats.total_by_type['Enemy']}")
+        self.total_alarms_label.configure(text=f"Razem: {stats.total_alarms}")
+        self.total_enemy_label.configure(text=f"Wróg: {stats.total_by_type['Enemy']}")
         self.total_faction_label.configure(
-            text=f"Faction: {stats.total_by_type['Faction']}"
+            text=f"Frakcja: {stats.total_by_type['Faction']}"
         )
 
         # Update session statistics
-        self.session_alarms_label.configure(text=f"Total: {stats.session_alarms}")
+        self.session_alarms_label.configure(text=f"Razem: {stats.session_alarms}")
         self.session_enemy_label.configure(
-            text=f"Enemy: {stats.session_by_type['Enemy']}"
+            text=f"Wróg: {stats.session_by_type['Enemy']}"
         )
         self.session_faction_label.configure(
-            text=f"Faction: {stats.session_by_type['Faction']}"
+            text=f"Frakcja: {stats.session_by_type['Faction']}"
         )
 
         # Update history
@@ -217,10 +217,10 @@ class StatisticsWindow(customtkinter.CTkToplevel):
         if recent:
             for event in recent:
                 self.history_textbox.insert(
-                    "end", f"[{event.formatted_time()}] {event.alarm_type}\n"
+                    "end", f"[{event.formatted_time()}] {ALARM_TYPE_NAMES.get(event.alarm_type, event.alarm_type)}\n"
                 )
         else:
-            self.history_textbox.insert("end", "No alarms yet in this session.")
+            self.history_textbox.insert("end", "Brak alarmów w tej sesji.")
 
         # Schedule next update
         self.after(STATUS_CHECK_INTERVAL, self.update_statistics)
@@ -229,14 +229,14 @@ class StatisticsWindow(customtkinter.CTkToplevel):
         """Reset session statistics."""
         stats = self.main.alert.get_statistics()
         stats.reset_session()
-        self.main.write_message("Statistics: Session reset.", "green")
+        self.main.write_message("Statystyki: wyzerowano sesję.", "green")
         self.update_statistics()
 
     def clear_history(self) -> None:
         """Clear alarm history."""
         stats = self.main.alert.get_statistics()
         stats.clear_history()
-        self.main.write_message("Statistics: History cleared.", "green")
+        self.main.write_message("Statystyki: wyczyszczono historię.", "green")
         self.update_statistics()
 
     def export_history(self) -> None:
@@ -244,18 +244,18 @@ class StatisticsWindow(customtkinter.CTkToplevel):
         stats = self.main.alert.get_statistics()
 
         if len(stats.alarm_history) == 0:
-            self.main.write_message("Statistics: No history to export.", "yellow")
+            self.main.write_message("Statystyki: brak historii do eksportu.", "yellow")
             return
 
         # Ask user for file format and location
         file_path = filedialog.asksaveasfilename(
             defaultextension=".csv",
             filetypes=[
-                ("CSV files", "*.csv"),
-                ("JSON files", "*.json"),
-                ("All files", "*.*"),
+                ("Pliki CSV", "*.csv"),
+                ("Pliki JSON", "*.json"),
+                ("Wszystkie pliki", "*.*"),
             ],
-            title="Export Alarm History",
+            title="Eksport historii alarmów",
         )
 
         if not file_path:
@@ -268,20 +268,25 @@ class StatisticsWindow(customtkinter.CTkToplevel):
                 self._export_csv(file_path, stats)
 
             self.main.write_message(
-                f"Statistics: History exported to {file_path}", "green"
+                f"Statystyki: wyeksportowano do {file_path}", "green"
             )
         except Exception as e:
-            self.main.write_message(f"Statistics: Export failed. {str(e)}", "red")
+            self.main.write_message(f"Statystyki: eksport nieudany. {str(e)}", "red")
 
     def _export_csv(self, file_path: str, stats) -> None:
         """Export history to CSV file."""
         with open(file_path, "w", newline="", encoding="utf-8") as csvfile:
             writer = csv.writer(csvfile)
             # Write header
-            writer.writerow(["Timestamp", "Alarm Type"])
+            writer.writerow(["Czas", "Typ alarmu"])
             # Write data
             for event in stats.alarm_history:
-                writer.writerow([event.formatted_time(), event.alarm_type])
+                writer.writerow(
+                    [
+                        event.formatted_time(),
+                        ALARM_TYPE_NAMES.get(event.alarm_type, event.alarm_type),
+                    ]
+                )
 
     def _export_json(self, file_path: str, stats) -> None:
         """Export history to JSON file."""

@@ -14,7 +14,7 @@ class ConfigValidator:
 
     @staticmethod
     def validate_region_coordinates(
-        x1: int, y1: int, x2: int, y2: int, region_name: str = "Region"
+        x1: int, y1: int, x2: int, y2: int, region_name: str = "Obszar"
     ) -> Tuple[bool, Optional[str]]:
         """
         Validate region coordinates.
@@ -30,13 +30,13 @@ class ConfigValidator:
             Tuple of (is_valid, error_message)
         """
         if not all(isinstance(coord, (int, float)) for coord in [x1, y1, x2, y2]):
-            return False, f"{region_name}: Coordinates must be numeric"
+            return False, f"{region_name}: współrzędne muszą być liczbami"
 
         if x1 >= x2:
-            return False, f"{region_name}: x1 ({x1}) must be less than x2 ({x2})"
+            return False, f"{region_name}: x1 ({x1}) musi być mniejsze niż x2 ({x2})"
 
         if y1 >= y2:
-            return False, f"{region_name}: y1 ({y1}) must be less than y2 ({y2})"
+            return False, f"{region_name}: y1 ({y1}) musi być mniejsze niż y2 ({y2})"
 
         # TODO Has been disabled for now: re-enable if needed
         # Only check horizontal coordinates for negativity; vertical can be negative for multi-monitor setups
@@ -49,14 +49,14 @@ class ConfigValidator:
         if width < 10 or height < 10:
             return (
                 False,
-                f"{region_name}: Region too small ({width}x{height}). Minimum 10x10 pixels",
+                f"{region_name}: obszar za mały ({width}x{height}). Minimum 10x10 pikseli",
             )
 
         return True, None
 
     @staticmethod
     def validate_detection_scale(
-        scale: int, scale_name: str = "Detection scale"
+        scale: int, scale_name: str = "Czułość wykrywania"
     ) -> Tuple[bool, Optional[str]]:
         """
         Validate detection scale value.
@@ -69,12 +69,12 @@ class ConfigValidator:
             Tuple of (is_valid, error_message)
         """
         if not isinstance(scale, (int, float)):
-            return False, f"{scale_name}: Must be numeric"
+            return False, f"{scale_name}: musi być liczbą"
 
         if not DETECTION_SCALE_MIN <= scale <= DETECTION_SCALE_MAX:
             return (
                 False,
-                f"{scale_name}: Must be between {DETECTION_SCALE_MIN} and {DETECTION_SCALE_MAX}",
+                f"{scale_name}: musi być w zakresie {DETECTION_SCALE_MIN}-{DETECTION_SCALE_MAX}",
             )
 
         return True, None
@@ -91,13 +91,13 @@ class ConfigValidator:
             Tuple of (is_valid, error_message)
         """
         if not isinstance(timer, (int, float)):
-            return False, "Cooldown timer: Must be numeric"
+            return False, "Przerwa między alarmami: musi być liczbą"
 
         if timer < 0:
-            return False, "Cooldown timer: Cannot be negative"
+            return False, "Przerwa między alarmami: nie może być ujemna"
 
         if timer > 3600:  # Max 1 hour
-            return False, "Cooldown timer: Cannot exceed 3600 seconds (1 hour)"
+            return False, "Przerwa między alarmami: maksymalnie 3600 sekund (1 godzina)"
 
         return True, None
 
@@ -116,21 +116,21 @@ class ConfigValidator:
             return True, None  # Empty URL is valid (webhook is optional)
 
         if not isinstance(url, str):
-            return False, "Webhook URL: Must be a string"
+            return False, "Adres webhooka: musi być tekstem"
 
         # Basic URL validation
         if not url.startswith(("http://", "https://")):
-            return False, "Webhook URL: Must start with http:// or https://"
+            return False, "Adres webhooka: musi zaczynać się od http:// lub https://"
 
         # Discord webhook validation
         if "discord.com" in url and "/api/webhooks/" not in url:
-            return False, "Webhook URL: Invalid Discord webhook format"
+            return False, "Adres webhooka: nieprawidłowy format webhooka Discord"
 
         return True, None
 
     @staticmethod
     def validate_audio_file(
-        file_path: str, file_name: str = "Audio file"
+        file_path: str, file_name: str = "Plik dźwiękowy"
     ) -> Tuple[bool, Optional[str]]:
         """
         Validate audio file exists and is accessible.
@@ -143,16 +143,16 @@ class ConfigValidator:
             Tuple of (is_valid, error_message)
         """
         if not file_path:
-            return False, f"{file_name}: Path cannot be empty"
+            return False, f"{file_name}: ścieżka nie może być pusta"
 
         if not isinstance(file_path, str):
-            return False, f"{file_name}: Path must be a string"
+            return False, f"{file_name}: ścieżka musi być tekstem"
 
         if not os.path.exists(file_path):
-            return False, f"{file_name}: File not found at {file_path}"
+            return False, f"{file_name}: nie znaleziono pliku {file_path}"
 
         if not os.path.isfile(file_path):
-            return False, f"{file_name}: Path is not a file: {file_path}"
+            return False, f"{file_name}: to nie jest plik: {file_path}"
 
         # Check file extension
         valid_extensions = [".wav", ".mp3", ".ogg", ".flac"]
@@ -160,7 +160,7 @@ class ConfigValidator:
         if ext.lower() not in valid_extensions:
             return (
                 False,
-                f"{file_name}: Invalid audio format. Supported: {', '.join(valid_extensions)}",
+                f"{file_name}: nieobsługiwany format dźwięku. Obsługiwane: {', '.join(valid_extensions)}",
             )
 
         return True, None
@@ -186,12 +186,12 @@ class ConfigValidator:
                 x2 = int(settings["alert_region_2"]["x"])
                 y2 = int(settings["alert_region_2"]["y"])
                 valid, error = ConfigValidator.validate_region_coordinates(
-                    x1, y1, x2, y2, "Alert Region"
+                    x1, y1, x2, y2, "Obszar alarmu"
                 )
                 if not valid:
                     errors.append(error)
             except (KeyError, ValueError, TypeError) as e:
-                errors.append(f"Alert Region: Invalid format - {str(e)}")
+                errors.append(f"Obszar alarmu: błędny format - {str(e)}")
 
         # Validate faction region
         if "faction_region_1" in settings and "faction_region_2" in settings:
@@ -201,36 +201,36 @@ class ConfigValidator:
                 x2 = int(settings["faction_region_2"]["x"])
                 y2 = int(settings["faction_region_2"]["y"])
                 valid, error = ConfigValidator.validate_region_coordinates(
-                    x1, y1, x2, y2, "Faction Region"
+                    x1, y1, x2, y2, "Obszar frakcji"
                 )
                 if not valid:
                     errors.append(error)
             except (KeyError, ValueError, TypeError) as e:
-                errors.append(f"Faction Region: Invalid format - {str(e)}")
+                errors.append(f"Obszar frakcji: błędny format - {str(e)}")
 
         # Validate detection scale
         if "detectionscale" in settings:
             try:
                 scale = int(settings["detectionscale"]["value"])
                 valid, error = ConfigValidator.validate_detection_scale(
-                    scale, "Alert Detection Scale"
+                    scale, "Czułość wykrywania alarmu"
                 )
                 if not valid:
                     errors.append(error)
             except (KeyError, ValueError, TypeError) as e:
-                errors.append(f"Alert Detection Scale: Invalid format - {str(e)}")
+                errors.append(f"Czułość wykrywania alarmu: błędny format - {str(e)}")
 
         # Validate faction scale
         if "faction_scale" in settings:
             try:
                 scale = int(settings["faction_scale"]["value"])
                 valid, error = ConfigValidator.validate_detection_scale(
-                    scale, "Faction Detection Scale"
+                    scale, "Czułość wykrywania frakcji"
                 )
                 if not valid:
                     errors.append(error)
             except (KeyError, ValueError, TypeError) as e:
-                errors.append(f"Faction Detection Scale: Invalid format - {str(e)}")
+                errors.append(f"Czułość wykrywania frakcji: błędny format - {str(e)}")
 
         # Validate cooldown timer
         if "cooldown_timer" in settings:
@@ -240,7 +240,7 @@ class ConfigValidator:
                 if not valid:
                     errors.append(error)
             except (KeyError, ValueError, TypeError) as e:
-                errors.append(f"Cooldown Timer: Invalid format - {str(e)}")
+                errors.append(f"Przerwa między alarmami: błędny format - {str(e)}")
 
         # Validate webhook URL
         if "server" in settings and "webhook" in settings["server"]:
@@ -250,6 +250,6 @@ class ConfigValidator:
                 if not valid:
                     errors.append(error)
             except (KeyError, TypeError) as e:
-                errors.append(f"Webhook URL: Invalid format - {str(e)}")
+                errors.append(f"Adres webhooka: błędny format - {str(e)}")
 
         return len(errors) == 0, errors

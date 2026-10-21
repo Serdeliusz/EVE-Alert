@@ -66,19 +66,19 @@ class MainMenuButtons:
 
         self.config_mode_menu = customtkinter.CTkButton(
             self.settings_label_frame,
-            text="Config Mode",
+            text="Tryb konfiguracji",
             command=self.config_mode_toggle,
         )
 
         self.setting_menu = customtkinter.CTkButton(
             self.settings_label_frame,
-            text="Settings",
+            text="Ustawienia",
             command=self.settings_mode_toggle,
         )
 
         self.statistics_button = customtkinter.CTkButton(
             self.settings_label_frame,
-            text="Statistics",
+            text="Statystyki",
             command=self.open_statistics,
         )
 
@@ -89,12 +89,12 @@ class MainMenuButtons:
         # Create Buttons
         self.show_alert_button = customtkinter.CTkButton(
             self.alert_label_frame,
-            text="Show Alert Region",
+            text="Podgląd alarmu",
             command=self.main.display_alert_region,
         )
         self.show_faction_button = customtkinter.CTkButton(
             self.alert_label_frame,
-            text="Show Faction Region",
+            text="Podgląd frakcji",
             command=self.main.display_faction_region,
         )
         self.show_status_label = customtkinter.CTkLabel(
@@ -115,7 +115,7 @@ class MainMenuButtons:
         except AttributeError as e:
             log_menu.exception("Config Menu Error: %s", e)
             self.main.write_message(
-                "Config Menu: Error read logs for more information.", "red"
+                "Tryb konfiguracji: błąd, szczegóły w logach.", "red"
             )
 
     def settings_mode_toggle(self) -> None:
@@ -125,7 +125,7 @@ class MainMenuButtons:
         except AttributeError as e:
             log_menu.exception("Setting Menu Error: %s", e)
             self.main.write_message(
-                "Setting Menu: Error read logs for more information.", "red"
+                "Ustawienia: błąd, szczegóły w logach.", "red"
             )
 
     def open_statistics(self) -> None:
@@ -135,7 +135,7 @@ class MainMenuButtons:
         except Exception as e:
             log_menu.exception("Statistics Window Error: %s", e)
             self.main.write_message(
-                "Statistics: Error read logs for more information.", "red"
+                "Statystyki: błąd, szczegóły w logach.", "red"
             )
 
 
@@ -297,14 +297,14 @@ class MainMenu(customtkinter.CTk):
         # Start Stop Buttons
         self.start_button = customtkinter.CTkButton(
             self.engine_label_frame,
-            text="Start Script",
+            text="Start",
             command=self.start_alert_script,
         )
         self.stop_button = customtkinter.CTkButton(
-            self.engine_label_frame, text="Stop Script", command=self.stop_alert_script
+            self.engine_label_frame, text="Stop", command=self.stop_alert_script
         )
         self.exit_button = customtkinter.CTkButton(
-            self.engine_label_frame, text="Exit", command=self.clean_up
+            self.engine_label_frame, text="Zamknij", command=self.clean_up
         )
         # Close Button per Window Exit
         self.protocol("WM_DELETE_WINDOW", self.clean_up)
@@ -374,7 +374,7 @@ class MainMenu(customtkinter.CTk):
         Args:
             message: Error message to display
         """
-        self.run_in_ui(messagebox, title="Error", message=message, icon="cancel")
+        self.run_in_ui(messagebox, title="Błąd", message=message, icon="cancel")
 
     def write_message(self, text: str, color: str = "normal") -> None:
         """Write a timestamped message to the log field. Safe to call from any thread.
@@ -403,7 +403,7 @@ class MainMenu(customtkinter.CTk):
     def update_mouse_position_label(self) -> None:
         """Update the mouse position label with current coordinates."""
         x, y = pyautogui.position()
-        self.mouse_position_label.configure(text=f"Mouse position: X={x}, Y={y}")
+        self.mouse_position_label.configure(text=f"Pozycja myszy: X={x}, Y={y}")
         self.after(UI_UPDATE_INTERVAL, self.update_mouse_position_label)
 
     def start_overlay(self) -> None:
@@ -502,7 +502,7 @@ class MainMenu(customtkinter.CTk):
                 ):
                     self.menu.config.faction_region = False
                     self.menu.config.alert_region = True
-                    self.write_message("Settings: Enemy Active.")
+                    self.write_message("Ustawienia: zaznacz obszar alarmu.")
                     self.start_overlay()
             elif key == keyboard.Key.f2:
                 if (
@@ -511,12 +511,12 @@ class MainMenu(customtkinter.CTk):
                 ):
                     self.menu.config.alert_region = False
                     self.menu.config.faction_region = True
-                    self.write_message("Settings: Faction Active.")
+                    self.write_message("Ustawienia: zaznacz obszar frakcji.")
                     self.start_overlay()
             elif key == keyboard.Key.esc:
                 if self.overlay_system.overlay:
                     self.overlay_system.clean_up()
-                    self.write_message("Settings: Aborted.")
+                    self.write_message("Ustawienia: przerwano.")
 
     def start_alert_script(self) -> None:
         """Start the alert monitoring system in a background thread.
@@ -528,7 +528,7 @@ class MainMenu(customtkinter.CTk):
             self.alert.start()
         except Exception as e:  # pylint: disable=broad-exception-caught
             log_alert.error("Start Alert Error: %s", e, exc_info=True)
-            self.write_message("System: Something went wrong.", "red")
+            self.write_message("System: coś poszło nie tak.", "red")
 
     def stop_alert_script(self) -> None:
         """Stop the alert monitoring system.
@@ -538,6 +538,6 @@ class MainMenu(customtkinter.CTk):
         """
         if self.alert.is_alive:
             self.alert.stop()
-            self.write_message("System: Stopping EVE Alert...")
+            self.write_message("System: zatrzymywanie EVE Alert...")
             return
-        self.write_message("System: EVE Alert isn't running.")
+        self.write_message("System: EVE Alert nie jest uruchomiony.")
