@@ -1,0 +1,52 @@
+name: Windows test build
+
+# Test build for the improve/threading-detection branch.
+# Runs the test suite on Windows, then builds EVE-Alert.exe and packages it
+# together with the img/ and sound/ folders the frozen app reads from.
+
+on:
+  push:
+    branches:
+      - windows-build
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-asyncio
+
+    - name: Run tests
+      run: python -m pytest tests/ -v
+
+    - name: Build with PyInstaller
+      run: |
+        python -m PyInstaller --noconfirm --onefile --windowed --icon "evealert/img/eve.ico" --name "EVE-Alert" --add-data "evealert/img;evealert/img/" --add-data "evealert/sound;evealert/sound/" --add-data "evealert/docs;evealert/docs/" --hidden-import "customtkinter" main.py
+
+    - name: Package exe with resources
+      shell: pwsh
+      run: |
+        New-Item -ItemType Directory -Path package/EVE-Alert | Out-Null
+        Copy-Item dist/EVE-Alert.exe package/EVE-Alert/
+        Copy-Item -Recurse evealert/img package/EVE-Alert/img
+        Copy-Item -Recurse evealert/sound package/EVE-Alert/sound
+
+    - name: Upload build artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: EVE-Alert-windows-test
+        path: package/
+        retention-days: 30
