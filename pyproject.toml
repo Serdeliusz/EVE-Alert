@@ -37,6 +37,7 @@ dependencies = [
     "pyautogui==0.9.54",
     "pyinstaller==6.11.0",
     "pynput==1.7.7",
+    "rapidocr_onnxruntime==1.4.4; python_version < '3.13'",
     "screeninfo==0.8.1",
     "sounddevice==0.5.1",
     "soundfile==0.12.1",

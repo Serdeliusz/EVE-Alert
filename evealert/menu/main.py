@@ -1,8 +1,8 @@
 import os
 import queue
 import threading
+from collections.abc import Callable
 from datetime import datetime
-from typing import Callable
 
 import customtkinter
 import pyautogui
@@ -27,6 +27,12 @@ from evealert.menu.statistics import StatisticsWindow
 from evealert.settings.helper import ICON, get_resource_path
 from evealert.settings.logger import logging
 from evealert.tools.overlay import OverlaySystem
+from evealert.tools.systemname import (
+    extract_system_name,
+    find_matching_name,
+    parse_names,
+)
+from evealert.tools.windowscapture import WindowCapture
 
 log_alert = logging.getLogger("alert")
 log_menu = logging.getLogger("menu")
@@ -124,9 +130,7 @@ class MainMenuButtons:
             self.main.menu.setting.open_menu()
         except AttributeError as e:
             log_menu.exception("Setting Menu Error: %s", e)
-            self.main.write_message(
-                "Ustawienia: błąd, szczegóły w logach.", "red"
-            )
+            self.main.write_message("Ustawienia: błąd, szczegóły w logach.", "red")
 
     def open_statistics(self) -> None:
         """Open the statistics window."""
@@ -134,9 +138,7 @@ class MainMenuButtons:
             StatisticsWindow(self.main)
         except Exception as e:
             log_menu.exception("Statistics Window Error: %s", e)
-            self.main.write_message(
-                "Statystyki: błąd, szczegóły w logach.", "red"
-            )
+            self.main.write_message("Statystyki: błąd, szczegóły w logach.", "red")
 
 
 class MenuManager:
@@ -164,7 +166,7 @@ class MainMenu(customtkinter.CTk):
     - Alert monitoring system (AlertAgent)
     - Overlay visualization
     - Status updates and logging
-    - Keyboard hotkeys (F1/F2 for region selection)
+    - Keyboard hotkeys (F1/F2/F3 for region selection)
 
     Threading:
         Tk widgets may only be used from the thread that created them (the
@@ -492,31 +494,87 @@ class MainMenu(customtkinter.CTk):
         Hotkeys:
             F1: Activate alert region selection
             F2: Activate faction region selection
+            F3: Activate system name region selection
             ESC: Cancel region selection
         """
-        if self.menu.config.is_open:
+        config = self.menu.config
+        if config.is_open:
             if key == keyboard.Key.f1:
-                if (
-                    not self.menu.config.is_alert_region
-                    and not self.menu.config.is_faction_region
-                ):
-                    self.menu.config.faction_region = False
-                    self.menu.config.alert_region = True
+                if not config.is_selecting:
+                    config.alert_region = True
                     self.write_message("Ustawienia: zaznacz obszar alarmu.")
                     self.start_overlay()
             elif key == keyboard.Key.f2:
-                if (
-                    not self.menu.config.is_faction_region
-                    and not self.menu.config.is_alert_region
-                ):
-                    self.menu.config.alert_region = False
-                    self.menu.config.faction_region = True
+                if not config.is_selecting:
+                    config.faction_region = True
                     self.write_message("Ustawienia: zaznacz obszar frakcji.")
+                    self.start_overlay()
+            elif key == keyboard.Key.f3:
+                if not config.is_selecting:
+                    config.system_region = True
+                    self.write_message("Ustawienia: zaznacz obszar z nazwą systemu.")
                     self.start_overlay()
             elif key == keyboard.Key.esc:
                 if self.overlay_system.overlay:
                     self.overlay_system.clean_up()
                     self.write_message("Ustawienia: przerwano.")
+
+    def test_system_region(self, x1: int, y1: int, x2: int, y2: int) -> None:
+        """Read the system name region once and report the result (GUI thread).
+
+        OCR takes a moment (the models load on first use), so it runs in a
+        short-lived thread and reports through the thread-safe write_message.
+        """
+        names = parse_names(self.menu.setting.system_name.get())
+
+        def worker() -> None:
+            capture = WindowCapture(self)
+            try:
+                image, _ = capture.get_screenshot_value(y1, x1, x2, y2)
+            finally:
+                capture.close()
+            if image is None:
+                self.write_message(
+                    "Nazwa systemu: nie udało się zrobić zrzutu obszaru.", "red"
+                )
+                return
+            reader = self.alert.system_reader
+            text = reader.read(image, use_cache=False)
+            if text is None:
+                self.write_message(
+                    f"Nazwa systemu: odczyt (OCR) niedostępny: {reader.error}", "red"
+                )
+                return
+            if not text:
+                self.write_message(
+                    "Nazwa systemu: w zaznaczonym obszarze nie odczytano tekstu. "
+                    "Zaznacz sam napis z nazwą systemu.",
+                    "yellow",
+                )
+                return
+            self.write_message(
+                f"Nazwa systemu: odczytano „{extract_system_name(text) or text}”.",
+                "green",
+            )
+            if not names:
+                self.write_message(
+                    "Nazwa systemu: wpisz w Ustawieniach (pole „Nazwa systemu”) "
+                    "systemy, w których alarmy o wrogach mają być pomijane, i kliknij Zapisz.",
+                    "yellow",
+                )
+            elif find_matching_name(text, names):
+                self.write_message(
+                    "Nazwa systemu: zgadza się z Ustawieniami – tutaj alarmy "
+                    "o wrogach będą pomijane.",
+                    "green",
+                )
+            else:
+                self.write_message(
+                    f"Nazwa systemu: inna niż w Ustawieniach ({', '.join(names)}) – "
+                    "alarmy działają normalnie.",
+                )
+
+        threading.Thread(target=worker, name="SystemRegionTest", daemon=True).start()
 
     def start_alert_script(self) -> None:
         """Start the alert monitoring system in a background thread.
