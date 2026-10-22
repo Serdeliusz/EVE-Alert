@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 import customtkinter
 
@@ -31,10 +31,10 @@ class OverlaySystem:
             mainmenu: Reference to the MainMenu instance
         """
         self.main = mainmenu
-        self.start_x: Optional[int] = None
-        self.start_y: Optional[int] = None
-        self.end_x: Optional[int] = None
-        self.end_y: Optional[int] = None
+        self.start_x: int | None = None
+        self.start_y: int | None = None
+        self.end_x: int | None = None
+        self.end_y: int | None = None
         self.rect = None
         self.overlay = None
         self.canvas = None
@@ -74,6 +74,7 @@ class OverlaySystem:
             self.overlay = None
             self.main.menu.config.faction_region = False
             self.main.menu.config.alert_region = False
+            self.main.menu.config.system_region = False
         if self.canvas:
             self.canvas.destroy()
             self.canvas = None
@@ -145,6 +146,8 @@ class OverlaySystem:
             self.set_alert_region()
         elif self.main.menu.config.is_faction_region:
             self.set_faction_region()
+        elif self.main.menu.config.is_system_region:
+            self.set_system_region()
 
     def set_alert_region(self) -> None:
         """Save the selected region as the alert detection area.
@@ -189,3 +192,34 @@ class OverlaySystem:
         self.main.menu.config.changed = True
         self.clean_up()
         self.main.write_message("Ustawienia: zapisano obszar frakcji.")
+
+    def set_system_region(self) -> None:
+        """Save the selected region as the system name area (F3).
+
+        Uses the same 30-pixel Y-offset correction as the other regions,
+        saves the coordinates and reads the region once, so the player sees
+        right away whether the system name can be read.
+        """
+        settings = self.main.menu.setting.load_settings()
+        settings["system_region_1"]["x"] = self.start_x
+        settings["system_region_1"]["y"] = (
+            self.start_y + 30
+        )  # Add 30 pixels to the y-coordinate to solve weird bug?
+
+        settings["system_region_2"]["x"] = self.end_x
+        settings["system_region_2"]["y"] = (
+            self.end_y + 30
+        )  # Add 30 pixels to the y-coordinate to solve weird bug?
+
+        self.main.menu.setting.save_settings(settings)
+        self.main.menu.config.changed = True
+        region = (
+            settings["system_region_1"]["x"],
+            settings["system_region_1"]["y"],
+            settings["system_region_2"]["x"],
+            settings["system_region_2"]["y"],
+        )
+        self.clean_up()
+        self.main.write_message("Ustawienia: zapisano obszar nazwy systemu.")
+        # Wait until the overlay is gone, then read the region once
+        self.main.after(300, lambda: self.main.test_system_region(*region))
