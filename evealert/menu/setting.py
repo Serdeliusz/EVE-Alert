@@ -16,11 +16,14 @@ logger = logging.getLogger("menu")
 # Hint texts shown in empty entry fields. They disappear when the field is
 # clicked and are never saved as values.
 WEBHOOK_PLACEHOLDER = "Wklej link webhooka"
-SYSTEM_NAME_PLACEHOLDER = "np. Jita (kilka: Jita, Perimeter)"
+SYSTEM_NAME_PLACEHOLDER = "np. Jita"
+IGNORED_SYSTEMS_PLACEHOLDER = "np. Jita, Perimeter"
 # Older versions saved the English hint texts as values
 PLACEHOLDER_VALUES = {
     WEBHOOK_PLACEHOLDER,
     SYSTEM_NAME_PLACEHOLDER,
+    IGNORED_SYSTEMS_PLACEHOLDER,
+    "np. Jita (kilka: Jita, Perimeter)",
     "Enter a Webhook URL",
     "Enter a System Name",
     "np. Jita",
@@ -43,6 +46,9 @@ DEFAULT_SETTINGS = {
     "server": {
         "name": "",
         "system": "",
+        # Systems where enemy alarms are skipped (read from the F3 region),
+        # separated by commas
+        "ignored_systems": "",
         "mute": False,
     },
 }
@@ -104,7 +110,7 @@ class SettingMenu:
         """Replace hint texts saved by older versions with empty values."""
         server = settings.get("server")
         if isinstance(server, dict):
-            for key in ("name", "system"):
+            for key in ("name", "system", "ignored_systems"):
                 value = server.get(key)
                 if not isinstance(value, str) or value.strip() in PLACEHOLDER_VALUES:
                     server[key] = ""
@@ -223,6 +229,9 @@ class SettingMenu:
             self.volumeslider_event(settings["volume"]["value"])
 
             self._set_entry_text(self.system_name, settings["server"]["system"])
+            self._set_entry_text(
+                self.ignored_systems, settings["server"]["ignored_systems"]
+            )
 
             webhook_url = settings["server"]["name"]
             self._set_entry_text(self.webhook, webhook_url)
@@ -290,6 +299,7 @@ class SettingMenu:
                     "server": {
                         "name": self.webhook.get().strip(),
                         "system": self.system_name.get().strip(),
+                        "ignored_systems": self.ignored_systems.get().strip(),
                         "mute": self.play_alarm.get(),
                     },
                 }
@@ -340,6 +350,7 @@ class SettingMenu:
                 self.main.alert.volume = volume / 100.0  # Convert to 0.0-1.0
                 self.main.alert.mute = mute
                 self.main.alert.system_name = self.system_name.get().strip()
+                self.main.alert.ignored_systems = self.ignored_systems.get().strip()
 
                 # Update webhook if changed
                 webhook_url = self.webhook.get().strip()
@@ -533,6 +544,12 @@ class SettingMenu:
         self.system_name = customtkinter.CTkEntry(
             self.menu_frame, placeholder_text=SYSTEM_NAME_PLACEHOLDER
         )
+        self.ignored_systems_label = customtkinter.CTkLabel(
+            self.menu_frame, text="Podaj nazwy systemów ignorowanych:", justify="left"
+        )
+        self.ignored_systems = customtkinter.CTkEntry(
+            self.menu_frame, placeholder_text=IGNORED_SYSTEMS_PLACEHOLDER
+        )
 
         self.play_alarm_checkbox = customtkinter.CTkCheckBox(
             self.menu_frame, text="Wycisz alarm", variable=self.play_alarm
@@ -615,16 +632,22 @@ class SettingMenu:
 
         self.play_alarm_checkbox.grid(row=12, column=2)
 
+        # Ignored Systems Visual (names separated by commas)
+        self.ignored_systems_label.grid(row=13, column=0, padx=20)
+        self.ignored_systems.grid(
+            row=13, column=1, columnspan=2, padx=20, pady=(5, 0), sticky="ew"
+        )
+
         # Test Audio Buttons
-        self.test_alarm_button.grid(row=13, column=0, pady=(10, 0))
-        self.test_faction_button.grid(row=13, column=1, pady=(10, 0))
+        self.test_alarm_button.grid(row=14, column=0, pady=(10, 0))
+        self.test_faction_button.grid(row=14, column=1, pady=(10, 0))
 
         # Save Button
-        self.save_button.grid(row=14, column=0, pady=10)
+        self.save_button.grid(row=15, column=0, pady=10)
         # Apply Button
-        self.apply_button.grid(row=14, column=1, pady=10)
+        self.apply_button.grid(row=15, column=1, pady=10)
         # Close Button
-        self.close_button.grid(row=14, column=2, pady=10)
+        self.close_button.grid(row=15, column=2, pady=10)
 
         self.setting_window.protocol("WM_DELETE_WINDOW", self.clean_up)
 

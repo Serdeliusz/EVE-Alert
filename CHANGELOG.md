@@ -11,9 +11,12 @@ Section Order:
 ### Removed
 -->
 
+## [2.1.0] 2026-10-22
+
 ### Added
 
-- **System name region (F3):** In config mode, F3 selects the part of the screen that shows the current solar system. The name is read with OCR (RapidOCR, offline) and enemy alarms are skipped while the player is in one of the systems entered in the settings (several names separated by commas). Faction alarms are not affected. If the name cannot be read, alarms stay on. Discord messages use the system name read from the screen.
+- **System name region (F3):** In config mode, F3 selects the part of the screen that shows the current solar system. The name is read with OCR (RapidOCR, offline) and enemy alarms are skipped while the player is in one of the systems entered in the new settings field "ignored systems" (names separated by commas). Faction alarms are not affected. If the name cannot be read, alarms stay on. Discord messages use the system name read from the screen; the "system name" setting is still the fallback name for Discord.
+- Settings window opens over the main window
 
 ### Fixed
 
@@ -256,5 +259,6 @@ Big Thanks to [@Gotarr](https://github.com/Gotarr) for improving the whole EVE-A
 [2.0.0]: https://github.com/Geuthur/eve-alert/compare/v1.0.1...v2.0.0 "2.0.0"
 [2.0.1]: https://github.com/Geuthur/eve-alert/compare/v2.0.0...v2.0.1 "2.0.1"
 [2.0.2]: https://github.com/Geuthur/eve-alert/compare/v2.0.1...v2.0.2 "2.0.2"
-[in development]: https://github.com/Geuthur/eve-alert/compare/v2.0.2...HEAD "In Development"
+[2.1.0]: https://github.com/Geuthur/eve-alert/compare/v2.0.2...v2.1.0 "2.1.0"
+[in development]: https://github.com/Geuthur/eve-alert/compare/v2.1.0...HEAD "In Development"
 [report any issues]: https://github.com/Geuthur/eve-alert/issues "report any issues"

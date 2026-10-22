@@ -114,7 +114,8 @@ class AlertAgent:  # pylint: disable=too-many-public-methods
         self.x1_faction = self.y1_faction = self.x2_faction = self.y2_faction = 0
         self.detection = 90
         self.detection_faction = 90
-        self.system_name = ""
+        self.system_name = ""  # name used in Discord messages
+        self.ignored_systems = ""  # comma separated, enemy alarms skipped there
         # System name region (F3); all zeros = not set
         self.x1_system = self.y1_system = self.x2_system = self.y2_system = 0
 
@@ -393,6 +394,7 @@ class AlertAgent:  # pylint: disable=too-many-public-methods
             server = settings.get("server", {})
             self.mute = bool(server.get("mute", False))
             self.system_name = str(server.get("system", ""))
+            self.ignored_systems = str(server.get("ignored_systems", ""))
             system_region_1 = settings.get("system_region_1", {})
             system_region_2 = settings.get("system_region_2", {})
             self.x1_system = int(system_region_1.get("x", 0))
@@ -502,7 +504,9 @@ class AlertAgent:  # pylint: disable=too-many-public-methods
         previous_system = self.current_system
         previous_ignored = self.in_ignored_system
         self.current_system = extract_system_name(text)
-        self.in_ignored_system = find_matching_name(text, parse_names(self.system_name))
+        self.in_ignored_system = find_matching_name(
+            text, parse_names(self.ignored_systems)
+        )
 
         if self.current_system != previous_system:
             if self.current_system:

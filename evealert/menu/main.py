@@ -525,7 +525,7 @@ class MainMenu(customtkinter.CTk):
         OCR takes a moment (the models load on first use), so it runs in a
         short-lived thread and reports through the thread-safe write_message.
         """
-        names = parse_names(self.menu.setting.system_name.get())
+        names = parse_names(self.menu.setting.ignored_systems.get())
 
         def worker() -> None:
             capture = WindowCapture(self)
@@ -558,20 +558,21 @@ class MainMenu(customtkinter.CTk):
             )
             if not names:
                 self.write_message(
-                    "Nazwa systemu: wpisz w Ustawieniach (pole „Nazwa systemu”) "
-                    "systemy, w których alarmy o wrogach mają być pomijane, i kliknij Zapisz.",
+                    "Nazwa systemu: wpisz w Ustawieniach systemy ignorowane "
+                    "(po przecinku), w których alarmy o wrogach mają być pomijane, "
+                    "i kliknij Zapisz.",
                     "yellow",
                 )
             elif find_matching_name(text, names):
                 self.write_message(
-                    "Nazwa systemu: zgadza się z Ustawieniami – tutaj alarmy "
+                    "Nazwa systemu: to system ignorowany – tutaj alarmy "
                     "o wrogach będą pomijane.",
                     "green",
                 )
             else:
                 self.write_message(
-                    f"Nazwa systemu: inna niż w Ustawieniach ({', '.join(names)}) – "
-                    "alarmy działają normalnie.",
+                    f"Nazwa systemu: nie ma jej wśród systemów ignorowanych "
+                    f"({', '.join(names)}) – alarmy działają normalnie.",
                 )
 
         threading.Thread(target=worker, name="SystemRegionTest", daemon=True).start()

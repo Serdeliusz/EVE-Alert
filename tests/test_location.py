@@ -9,7 +9,7 @@ import numpy as np
 from evealert.manager.alertmanager import AlertAgent
 
 
-def make_settings(system="Jita", region=True):
+def make_settings(ignored="Jita", region=True, system="Home"):
     settings = {
         "alert_region_1": {"x": 100, "y": 100},
         "alert_region_2": {"x": 300, "y": 300},
@@ -19,7 +19,12 @@ def make_settings(system="Jita", region=True):
         "faction_scale": {"value": 85},
         "cooldown_timer": {"value": 30},
         "volume": {"value": 100},
-        "server": {"name": "", "system": system, "mute": False},
+        "server": {
+            "name": "",
+            "system": system,
+            "ignored_systems": ignored,
+            "mute": False,
+        },
     }
     if region:
         settings["system_region_1"] = {"x": 10, "y": 10}
@@ -84,7 +89,15 @@ class LocationTests(unittest.TestCase):
         self.assertIsNone(agent.in_ignored_system)
         self.assertTrue(agent.system_check_enabled)
         # Messages fall back to the name from the settings
-        self.assertEqual(agent.alert_system_name, "Jita")
+        self.assertEqual(agent.alert_system_name, "Home")
+
+    def test_discord_system_name_is_not_ignored(self):
+        # "Nazwa systemu" is only the name for Discord messages
+        agent, _ = self.make_agent(make_settings(ignored="", system="Jita"))
+        agent.system_reader.read.return_value = "Jita 1.0 < Kimotoro"
+        agent.update_location()
+        self.assertEqual(agent.current_system, "Jita")
+        self.assertIsNone(agent.in_ignored_system)
 
     def test_ocr_failure_disables_check(self):
         agent, main = self.make_agent(make_settings())
