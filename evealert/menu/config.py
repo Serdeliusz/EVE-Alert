@@ -49,8 +49,8 @@ class ConfigModeMenu:
         description_text += (
             "\nF3: zaznacz w grze nazwę systemu, w którym jesteś\n"
             "(panel lokalizacji w lewym górnym rogu, np. „Jita 1.0”).\n"
-            "Gdy odczytana nazwa zgadza się z „Nazwą systemu”\n"
-            "w Ustawieniach, alarmy o wrogach są pomijane.\n"
+            "Gdy odczytana nazwa jest na liście systemów\n"
+            "ignorowanych w Ustawieniach, alarmy o wrogach są pomijane.\n"
         )
         description_text += "\nAby przerwać, naciśnij ESC.\n"
 
