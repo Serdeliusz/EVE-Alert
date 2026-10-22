@@ -636,28 +636,30 @@ class SettingMenu:
                 fg_color="#fa0202", hover_color="#bd291e"
             )
 
-            # Position the description window to the right of the main menu
-            config_menu_x, config_menu_y = (
-                self.main.winfo_x(),
-                self.main.winfo_y(),
-            )
-            config_menu_width, config_menu_height = (
-                self.main.winfo_width(),
-                self.main.winfo_height(),
-            )
+            # Open over the main window (slightly offset), kept on screen
+            main_x, main_y = self.main.winfo_x(), self.main.winfo_y()
 
             # Size the window to its content
             self.setting_window.update_idletasks()
             config_window_width = max(650, self.setting_window.winfo_reqwidth())
             config_window_height = max(400, self.setting_window.winfo_reqheight())
-            config_window_x = config_menu_x + config_menu_width + 10
-            config_window_y = config_menu_y + config_menu_height + 40
+            screen_width = self.setting_window.winfo_screenwidth()
+            screen_height = self.setting_window.winfo_screenheight()
+            config_window_x = max(
+                0, min(main_x + 30, screen_width - config_window_width)
+            )
+            config_window_y = max(
+                0, min(main_y + 30, screen_height - config_window_height - 40)
+            )
 
             self.setting_window.geometry(
                 f"{config_window_width}x{config_window_height}+{config_window_x}+{config_window_y}"
             )
 
             self.setting_window.deiconify()
+            # Show it above the main window
+            self.setting_window.lift()
+            self.setting_window.focus_force()
         else:
             self.clean_up()
 
