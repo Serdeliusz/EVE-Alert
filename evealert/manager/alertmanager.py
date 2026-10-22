@@ -4,7 +4,7 @@ import os
 import random
 import threading
 import time
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 import numpy as np
 import sounddevice as sd
@@ -33,6 +33,12 @@ from evealert.exceptions import EVEAlertException
 from evealert.settings.helper import get_resource_path
 from evealert.settings.validator import ConfigValidator
 from evealert.statistics import AlarmStatistics
+from evealert.tools.systemname import (
+    SystemNameReader,
+    extract_system_name,
+    find_matching_name,
+    parse_names,
+)
 from evealert.tools.vision import Vision
 from evealert.tools.windowscapture import WindowCapture
 
@@ -58,7 +64,7 @@ FACTION_FILES = sorted(
 logger = logging.getLogger("alert")
 
 
-class AlertAgent:
+class AlertAgent:  # pylint: disable=too-many-public-methods
     """Alert Agent for EVE Online local chat monitoring.
 
     This class manages the complete alert system including:
@@ -98,9 +104,9 @@ class AlertAgent:
 
         # Worker thread state (guarded by _state_lock)
         self._state_lock = threading.Lock()
-        self._thread: Optional[threading.Thread] = None
-        self._loop: Optional[asyncio.AbstractEventLoop] = None
-        self._main_task: Optional[asyncio.Task] = None
+        self._thread: threading.Thread | None = None
+        self._loop: asyncio.AbstractEventLoop | None = None
+        self._main_task: asyncio.Task | None = None
         self._stop_requested = threading.Event()
 
         # Region settings (filled by load_settings)
@@ -109,6 +115,14 @@ class AlertAgent:
         self.detection = 90
         self.detection_faction = 90
         self.system_name = ""
+        # System name region (F3); all zeros = not set
+        self.x1_system = self.y1_system = self.x2_system = self.y2_system = 0
+
+        # Location (system name read with OCR from the F3 region)
+        self.system_reader = SystemNameReader()
+        self.system_check_enabled = False
+        self.current_system = ""  # name read from the screen ("" = unknown)
+        self.in_ignored_system: str | None = None  # matching name from settings
 
         # Vision Settings
         self.enemy = False
@@ -207,7 +221,9 @@ class AlertAgent:
             return False
 
         if not self.load_settings():
-            self.main.write_message("System: popraw ustawienia i uruchom ponownie.", "red")
+            self.main.write_message(
+                "System: popraw ustawienia i uruchom ponownie.", "red"
+            )
             return False
 
         if not self.alert_vision.has_templates:
@@ -239,7 +255,11 @@ class AlertAgent:
         """Stop the worker thread and wait for it (used on application exit)."""
         self.stop()
         thread = self._thread
-        if thread is not None and thread.is_alive() and thread is not threading.current_thread():
+        if (
+            thread is not None
+            and thread.is_alive()
+            and thread is not threading.current_thread()
+        ):
             thread.join(timeout=ALERT_STOP_TIMEOUT)
             if thread.is_alive():
                 logger.warning("Alert thread did not stop in time.")
@@ -306,6 +326,8 @@ class AlertAgent:
         self.faction = False
         self.alarm_detected = False
         self.webhook_sent = False
+        self.current_system = ""
+        self.in_ignored_system = None
 
     def _on_stopped(self) -> None:
         """Update the GUI after the worker thread ended (GUI thread)."""
@@ -371,6 +393,12 @@ class AlertAgent:
             server = settings.get("server", {})
             self.mute = bool(server.get("mute", False))
             self.system_name = str(server.get("system", ""))
+            system_region_1 = settings.get("system_region_1", {})
+            system_region_2 = settings.get("system_region_2", {})
+            self.x1_system = int(system_region_1.get("x", 0))
+            self.y1_system = int(system_region_1.get("y", 0))
+            self.x2_system = int(system_region_2.get("x", 0))
+            self.y2_system = int(system_region_2.get("y", 0))
         except (KeyError, TypeError, ValueError) as e:
             logger.exception("Invalid settings: %s", e)
             self.main.write_message("Ustawienia: błędny plik ustawień.", "red")
@@ -378,7 +406,15 @@ class AlertAgent:
 
         # A new faction region gets a new chance after it was disabled
         self.faction_enabled = self.alert_vision_faction.has_templates
+        # The same for the system name region
+        self.system_check_enabled = self.has_system_region
+        self.system_reader.reset()
         return True
+
+    @property
+    def has_system_region(self) -> bool:
+        """Returns True if a system name region (F3) is set."""
+        return any((self.x1_system, self.y1_system, self.x2_system, self.y2_system))
 
     def _reload_settings_if_changed(self) -> None:
         """Reload settings in the worker thread when the GUI changed them."""
@@ -423,6 +459,78 @@ class AlertAgent:
             self.y1_faction, self.x1_faction, self.x2_faction, self.y2_faction
         )
         return screenshot
+
+    def _capture_system_region(self):
+        screenshot, _ = self.wincap.get_screenshot_value(
+            self.y1_system, self.x1_system, self.x2_system, self.y2_system
+        )
+        return screenshot
+
+    def _disable_system_check(self, reason: str) -> None:
+        """Turn off reading the system name (alarms then always work)."""
+        self.system_check_enabled = False
+        self.current_system = ""
+        self.in_ignored_system = None
+        self.main.write_message(
+            f"Nazwa systemu: odczyt wyłączony ({reason}). "
+            "Alarmy o wrogach działają wszędzie. Zaznacz obszar ponownie (F3).",
+            "yellow",
+        )
+
+    def update_location(self) -> None:
+        """Read the system name and check it against the settings.
+
+        Sets ``current_system`` and ``in_ignored_system``. Never raises: if
+        the name cannot be read, the alarms stay on.
+        """
+        if not self.system_check_enabled:
+            self.in_ignored_system = None
+            return
+
+        screenshot = self._capture_system_region()
+        if screenshot is None:
+            self._disable_system_check("nie udało się zrobić zrzutu obszaru")
+            return
+
+        text = self.system_reader.read(screenshot)
+        if text is None:
+            self._disable_system_check(
+                f"OCR niedostępny: {self.system_reader.error or 'błąd odczytu'}"
+            )
+            return
+
+        previous_system = self.current_system
+        previous_ignored = self.in_ignored_system
+        self.current_system = extract_system_name(text)
+        self.in_ignored_system = find_matching_name(text, parse_names(self.system_name))
+
+        if self.current_system != previous_system:
+            if self.current_system:
+                self.main.write_message(f"Lokalizacja: {self.current_system}")
+            else:
+                self.main.write_message(
+                    "Lokalizacja: nie odczytano nazwy systemu – alarmy działają.",
+                    "yellow",
+                )
+        if self.in_ignored_system != previous_ignored:
+            if self.in_ignored_system:
+                self.main.write_message(
+                    f"Jesteś w {self.in_ignored_system} – alarmy o wrogach "
+                    "są tu pomijane.",
+                    "yellow",
+                )
+            elif previous_ignored:
+                self.main.write_message(
+                    f"Opuściłeś {previous_ignored} – alarmy o wrogach włączone.",
+                    "green",
+                )
+
+    @property
+    def alert_system_name(self) -> str:
+        """System name used in messages: read from the screen, else from settings."""
+        if self.current_system:
+            return self.current_system
+        return self.system_name
 
     async def vision_check(self) -> None:
         """Validate that screenshot capture works for configured alert region."""
@@ -513,7 +621,9 @@ class AlertAgent:
             else:
                 faction_vision.close_debug_window("Faction")
 
-            await asyncio.sleep(VISION_SLEEP_INTERVAL if active else VISION_IDLE_INTERVAL)
+            await asyncio.sleep(
+                VISION_SLEEP_INTERVAL if active else VISION_IDLE_INTERVAL
+            )
 
     # ------------------------------------------------------------------
     # Alarms
@@ -545,8 +655,9 @@ class AlertAgent:
 
         if alarm_type == "Enemy" and self.webhook_sent:
             self.webhook_sent = False
-            if self.system_name:
-                message = f"Koniec alarmu: {self.system_name}"
+            system_name = self.alert_system_name
+            if system_name:
+                message = f"Koniec alarmu: {system_name}"
             else:
                 message = "Koniec alarmu"
             await self._execute_webhook(message)
@@ -574,8 +685,9 @@ class AlertAgent:
 
         if self.main.webhook and alarm_type == "Enemy" and self.webhook_sent is False:
             self.webhook_cooldown_timer = current_time + WEBHOOK_COOLDOWN
-            if self.system_name:
-                message = f"Wróg w {self.system_name}!"
+            system_name = self.alert_system_name
+            if system_name:
+                message = f"Wróg w {system_name}!"
             else:
                 message = "Wróg w systemie!"
             if await self._execute_webhook(message):
@@ -596,7 +708,8 @@ class AlertAgent:
         current_time = time.time()
         if current_time < self.cooldown_timers[alarm_type]:
             self.main.write_message(
-                f"Dźwięk ({ALARM_TYPE_NAMES.get(alarm_type, alarm_type)}): trwa przerwa.", "yellow"
+                f"Dźwięk ({ALARM_TYPE_NAMES.get(alarm_type, alarm_type)}): trwa przerwa.",
+                "yellow",
             )
             return
 
@@ -649,6 +762,10 @@ class AlertAgent:
     async def run(self) -> None:
         """Main alert checking loop.
 
+        Enemy alarms are skipped while the player is in a system from the
+        settings ("Nazwa systemu"), read from the F3 region. Faction alarms
+        are not affected.
+
         Returns when the alert region can no longer be checked. Any other
         unexpected error is raised and stops the whole system with a message,
         so the player never believes they are protected when they are not.
@@ -663,9 +780,20 @@ class AlertAgent:
                 if not self.update_detection():
                     return
 
+                # OCR runs only when the region image changed, so this is
+                # usually just one screenshot comparison.
+                self.update_location()
+                if self.enemy and self.in_ignored_system:
+                    self.main.write_message(
+                        f"Wróg w Local – pominięty ({self.in_ignored_system}).",
+                    )
+                    self.enemy = False
+
                 if self.faction:
                     self.alarm_detected = True
-                    await self.alarm_detection("Spawn frakcji!", FACTION_SOUND, "Faction")
+                    await self.alarm_detection(
+                        "Spawn frakcji!", FACTION_SOUND, "Faction"
+                    )
                 if self.enemy:
                     self.alarm_detected = True
                     await self.alarm_detection("Wróg w Local!", ALARM_SOUND, "Enemy")

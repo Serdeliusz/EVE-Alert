@@ -11,6 +11,10 @@ Section Order:
 ### Removed
 -->
 
+### Added
+
+- **System name region (F3):** In config mode, F3 selects the part of the screen that shows the current solar system. The name is read with OCR (RapidOCR, offline) and enemy alarms are skipped while the player is in one of the systems entered in the settings (several names separated by commas). Faction alarms are not affected. If the name cannot be read, alarms stay on. Discord messages use the system name read from the screen.
+
 ### Fixed
 
 - **Threading:** The alert system runs in one worker thread with its own event loop per start. Stop/Start works repeatedly, and the GUI is no longer updated from background threads (random freezes and Tk errors)

@@ -16,13 +16,14 @@ logger = logging.getLogger("menu")
 # Hint texts shown in empty entry fields. They disappear when the field is
 # clicked and are never saved as values.
 WEBHOOK_PLACEHOLDER = "Wklej link webhooka"
-SYSTEM_NAME_PLACEHOLDER = "np. Jita"
+SYSTEM_NAME_PLACEHOLDER = "np. Jita (kilka: Jita, Perimeter)"
 # Older versions saved the English hint texts as values
 PLACEHOLDER_VALUES = {
     WEBHOOK_PLACEHOLDER,
     SYSTEM_NAME_PLACEHOLDER,
     "Enter a Webhook URL",
     "Enter a System Name",
+    "np. Jita",
 }
 
 DEFAULT_SETTINGS = {
@@ -31,6 +32,10 @@ DEFAULT_SETTINGS = {
     "alert_region_2": {"x": 0, "y": 0},
     "faction_region_1": {"x": 0, "y": 0},
     "faction_region_2": {"x": 0, "y": 0},
+    # Region with the name of the current solar system (F3). All zeros means
+    # "not set": enemy alarms are then never skipped.
+    "system_region_1": {"x": 0, "y": 0},
+    "system_region_2": {"x": 0, "y": 0},
     "detectionscale": {"value": 90},
     "faction_scale": {"value": 90},
     "cooldown_timer": {"value": 30},
@@ -201,6 +206,16 @@ class SettingMenu:
             self.faction_scale.set(settings["faction_scale"]["value"])
             self.factionslider_event(settings["faction_scale"]["value"])
 
+            self.system_region_x_first.delete(0, customtkinter.END)
+            self.system_region_x_first.insert(0, settings["system_region_1"]["x"])
+            self.system_region_y_first.delete(0, customtkinter.END)
+            self.system_region_y_first.insert(0, settings["system_region_1"]["y"])
+
+            self.system_region_x_second.delete(0, customtkinter.END)
+            self.system_region_x_second.insert(0, settings["system_region_2"]["x"])
+            self.system_region_y_second.delete(0, customtkinter.END)
+            self.system_region_y_second.insert(0, settings["system_region_2"]["y"])
+
             self.cooldown_timer.delete(0, customtkinter.END)
             self.cooldown_timer.insert(0, settings["cooldown_timer"]["value"])
 
@@ -260,6 +275,14 @@ class SettingMenu:
                         "x": int(self.faction_region_x_second.get()),
                         "y": int(self.faction_region_y_second.get()),
                     },
+                    "system_region_1": {
+                        "x": int(self.system_region_x_first.get()),
+                        "y": int(self.system_region_y_first.get()),
+                    },
+                    "system_region_2": {
+                        "x": int(self.system_region_x_second.get()),
+                        "y": int(self.system_region_y_second.get()),
+                    },
                     "detectionscale": {"value": int(self.detectionscale.get())},
                     "faction_scale": {"value": int(self.faction_scale.get())},
                     "cooldown_timer": {"value": int(self.cooldown_timer.get())},
@@ -316,6 +339,7 @@ class SettingMenu:
                 self.main.alert.cooldowntimer = cooldown
                 self.main.alert.volume = volume / 100.0  # Convert to 0.0-1.0
                 self.main.alert.mute = mute
+                self.main.alert.system_name = self.system_name.get().strip()
 
                 # Update webhook if changed
                 webhook_url = self.webhook.get().strip()
@@ -324,7 +348,9 @@ class SettingMenu:
                 else:
                     self.main.webhook = None
 
-                self.main.write_message("Ustawienia: zastosowano w działającym systemie.", "green")
+                self.main.write_message(
+                    "Ustawienia: zastosowano w działającym systemie.", "green"
+                )
                 logger.info(
                     "Runtime settings applied: detection=%d, faction_scale=%d, cooldown=%d, mute=%s",
                     detection_scale,
@@ -398,6 +424,22 @@ class SettingMenu:
         )
         self.faction_region_x_second = customtkinter.CTkEntry(self.menu_frame)
         self.faction_region_y_second = customtkinter.CTkEntry(self.menu_frame)
+
+        # System name region (F3)
+        self.system_region_label_1 = customtkinter.CTkLabel(
+            self.menu_frame,
+            text="Obszar nazwy systemu – lewy górny róg:",
+            justify="left",
+        )
+        self.system_region_x_first = customtkinter.CTkEntry(self.menu_frame)
+        self.system_region_y_first = customtkinter.CTkEntry(self.menu_frame)
+        self.system_region_label_2 = customtkinter.CTkLabel(
+            self.menu_frame,
+            text="Obszar nazwy systemu – prawy dolny róg:",
+            justify="left",
+        )
+        self.system_region_x_second = customtkinter.CTkEntry(self.menu_frame)
+        self.system_region_y_second = customtkinter.CTkEntry(self.menu_frame)
 
         # Row 6 - Init
         # Slider
@@ -501,7 +543,9 @@ class SettingMenu:
         )
 
         self.test_faction_button = customtkinter.CTkButton(
-            self.menu_frame, text="Testuj dźwięk frakcji", command=self.test_faction_sound
+            self.menu_frame,
+            text="Testuj dźwięk frakcji",
+            command=self.test_faction_sound,
         )
 
         # Init Visuals
@@ -529,50 +573,58 @@ class SettingMenu:
         self.faction_region_x_second.grid(row=4, column=1, padx=20)
         self.faction_region_y_second.grid(row=4, column=2, padx=20)
 
-        # Faction Region 2 Visual
-        self.cooldown_timer_label.grid(row=5, column=0, padx=20)
-        self.cooldown_timer.grid(row=5, column=1, padx=20)
-        self.cooldown_timer_text.grid(row=5, column=2)
+        # System Name Region Visual
+        self.system_region_label_1.grid(row=5, column=0, padx=20)
+        self.system_region_x_first.grid(row=5, column=1, padx=20)
+        self.system_region_y_first.grid(row=5, column=2, padx=20)
+        self.system_region_label_2.grid(row=6, column=0, padx=20)
+        self.system_region_x_second.grid(row=6, column=1, padx=20)
+        self.system_region_y_second.grid(row=6, column=2, padx=20)
+
+        # Cooldown Visual
+        self.cooldown_timer_label.grid(row=7, column=0, padx=20)
+        self.cooldown_timer.grid(row=7, column=1, padx=20)
+        self.cooldown_timer_text.grid(row=7, column=2)
 
         # Slider Visual
-        self.empty_label_1.grid(row=6, column=2)
+        self.empty_label_1.grid(row=8, column=2)
 
         # Slider Visual
-        self.slider_label.grid(row=6, column=0)
-        self.slider.grid(row=6, column=1)
+        self.slider_label.grid(row=8, column=0)
+        self.slider.grid(row=8, column=1)
 
         # Slider Visual
-        self.empty_label_2.grid(row=7, column=2)
+        self.empty_label_2.grid(row=9, column=2)
 
         # Slider Visual
-        self.faction_slider_label.grid(row=7, column=0)
-        self.slider2.grid(row=7, column=1)
+        self.faction_slider_label.grid(row=9, column=0)
+        self.slider2.grid(row=9, column=1)
 
         # Volume Slider Visual
-        self.empty_label_3.grid(row=8, column=2)
-        self.volume_slider_label.grid(row=8, column=0)
-        self.volume_slider.grid(row=8, column=1)
+        self.empty_label_3.grid(row=10, column=2)
+        self.volume_slider_label.grid(row=10, column=0)
+        self.volume_slider.grid(row=10, column=1)
 
         # Webhook Visual
-        self.webhook_label.grid(row=9, column=0)
-        self.webhook.grid(row=9, column=1)
+        self.webhook_label.grid(row=11, column=0)
+        self.webhook.grid(row=11, column=1)
 
         # System Name Visual
-        self.system_name_label.grid(row=10, column=0)
-        self.system_name.grid(row=10, column=1)
+        self.system_name_label.grid(row=12, column=0)
+        self.system_name.grid(row=12, column=1)
 
-        self.play_alarm_checkbox.grid(row=10, column=2)
+        self.play_alarm_checkbox.grid(row=12, column=2)
 
         # Test Audio Buttons
-        self.test_alarm_button.grid(row=11, column=0, pady=(10, 0))
-        self.test_faction_button.grid(row=11, column=1, pady=(10, 0))
+        self.test_alarm_button.grid(row=13, column=0, pady=(10, 0))
+        self.test_faction_button.grid(row=13, column=1, pady=(10, 0))
 
         # Save Button
-        self.save_button.grid(row=12, column=0, pady=10)
+        self.save_button.grid(row=14, column=0, pady=10)
         # Apply Button
-        self.apply_button.grid(row=12, column=1, pady=10)
+        self.apply_button.grid(row=14, column=1, pady=10)
         # Close Button
-        self.close_button.grid(row=12, column=2, pady=10)
+        self.close_button.grid(row=14, column=2, pady=10)
 
         self.setting_window.protocol("WM_DELETE_WINDOW", self.clean_up)
 
@@ -634,7 +686,7 @@ class SettingMenu:
 
         if self.play_alarm.get():
             self.main.write_message(
-                f"Test dźwięku: dźwięk jest wyciszony. Odznacz 'Wycisz alarm', aby przetestować.",
+                "Test dźwięku: dźwięk jest wyciszony. Odznacz 'Wycisz alarm', aby przetestować.",
                 "yellow",
             )
             return
@@ -652,7 +704,9 @@ class SettingMenu:
 
             # Non-blocking playback; report completion via the Tk event loop
             sd.play(data, samplerate)
-            self.main.write_message(f"Test dźwięku: odtwarzam dźwięk {label}...", "green")
+            self.main.write_message(
+                f"Test dźwięku: odtwarzam dźwięk {label}...", "green"
+            )
             duration_ms = int(len(data) / samplerate * 1000)
             self.main.after(
                 duration_ms,
